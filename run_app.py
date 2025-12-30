@@ -5,6 +5,25 @@ import time
 import os
 import sys
 
+# run_app.py
+import streamlit as st
+import pandas as pd
+import numpy as np
+# import any other libraries you used in main.py
+
+# --- Streamlit app starts here ---
+st.set_page_config(page_title="My App", layout="wide")
+
+st.title("My Streamlit App")
+
+# Example: move any Streamlit code from main.py here
+# For instance, if main.py had:
+# df = pd.read_csv("data.csv")
+# st.write(df)
+
+# --- Example content ---
+st.write("Hello! Your app is now ready for Streamlit Cloud.")
+
 PORT = 8501
 URL = f"http://127.0.0.1:{PORT}"
 MAIN_FILE = os.path.abspath("main.py")
