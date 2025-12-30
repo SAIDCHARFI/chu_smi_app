@@ -1,0 +1,10 @@
+streamlit
+streamlit-authenticator
+pandas
+SQLAlchemy
+pyyaml
+bcrypt
+xlsxwriter
+matplotlib
+plotly
+PyYAML
