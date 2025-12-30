@@ -300,19 +300,29 @@ if page == "Dashboard":
         st.dataframe(df_db, use_container_width=True)
 
     # Export options
+    from io import BytesIO
+
     st.subheader("💾 Exporter les données")
     export_format = st.radio("Format d'export", ["CSV", "Excel"], horizontal=True)
+
     if st.button("Exporter"):
         if export_format == "CSV":
             csv_data = df_db.to_csv(index=False).encode("utf-8")
-            st.download_button("Télécharger CSV", csv_data, "indicateurs_cliniques.csv", "text/csv")
-        else:
-            excel_file = pd.ExcelWriter("indicateurs_cliniques.xlsx", engine="xlsxwriter")
-            df_db.to_excel(excel_file, index=False, sheet_name="Indicateurs")
-            excel_file.save()
             st.download_button(
-                "Télécharger Excel",
-                data=open("indicateurs_cliniques.xlsx", "rb").read(),
+                "Télécharger CSV",
+                csv_data,
+                "indicateurs_cliniques.csv",
+                "text/csv"
+            )
+
+        else:
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                df_db.to_excel(writer, index=False, sheet_name="Indicateurs")
+
+            st.download_button(
+                label="Télécharger Excel",
+                data=output.getvalue(),
                 file_name="indicateurs_cliniques.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
