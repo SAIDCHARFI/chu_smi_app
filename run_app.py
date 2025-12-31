@@ -58,12 +58,18 @@ else:
 # DATABASE SETUP
 # ------------------------
 #DB_URL = "sqlite:///clinical_indicators.db"
+# ------------------------
+# DATABASE SETUP
+# ------------------------
 @st.cache_resource
-engine = create_engine(
-    st.secrets["DATABASE_URL"],
-    pool_pre_ping=True
-)
+def get_engine():
+    return create_engine(
+        st.secrets["DATABASE_URL"],
+        pool_pre_ping=True
+    )
+
 engine = get_engine()
+
 # Clinical indicators table
 try:
     with engine.connect() as conn:
