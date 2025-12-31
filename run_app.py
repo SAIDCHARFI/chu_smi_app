@@ -8,8 +8,7 @@ import streamlit_authenticator as stauth
 from datetime import datetime
 import plotly.express as px
 from io import BytesIO
-import psycopg2
-st.write("psycopg2 imported successfully")
+
 # ------------------------
 # PAGE CONFIG
 # ------------------------
