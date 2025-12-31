@@ -8,3 +8,4 @@ xlsxwriter
 matplotlib
 plotly
 PyYAML
+psycopg2-binary
