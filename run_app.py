@@ -57,9 +57,13 @@ else:
 # ------------------------
 # DATABASE SETUP
 # ------------------------
-DB_URL = "sqlite:///clinical_indicators.db"
-engine = create_engine(DB_URL)
-
+#DB_URL = "sqlite:///clinical_indicators.db"
+@st.cache_resource
+engine = create_engine(
+    st.secrets["DATABASE_URL"],
+    pool_pre_ping=True
+)
+engine = get_engine()
 # Clinical indicators table
 try:
     with engine.connect() as conn:
@@ -104,11 +108,11 @@ try:
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS activity_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 username TEXT,
                 action TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
+                timestamp TIMESTAMPTZ DEFAULT NOW()
+                )
         """))
         conn.commit()
 except SQLAlchemyError as e:
