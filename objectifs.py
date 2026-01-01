@@ -149,9 +149,4 @@ def run_objectifs():
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_filtered.to_excel(writer, index=False, sheet_name="Objectifs_KPI")
 
-    st.download_button(
-        "⬇️ Télécharger (Excel)",
-        data=output.getvalue(),
-        file_name="objectifs_kpi.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+   
