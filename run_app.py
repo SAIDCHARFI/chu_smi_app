@@ -6,7 +6,6 @@ from datetime import datetime
 import yaml
 import streamlit_authenticator as stauth
 from io import BytesIO
-import plotly.express as px
 
 # ------------------------
 # PAGE CONFIG
@@ -182,11 +181,11 @@ if page == "Dashboard":
         st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
 
     # ------------------------
-    # AFFICHER LES 10 DERNIERS PATIENTS AVEC FILTRES
+    # AFFICHER LES 10 DERNIERS PATIENTS AVEC FILTRES PAR NOM/PRÉNOM
     # ------------------------
     st.subheader("🗂️ Derniers patients enregistrés")
 
-    # Récupérer tous les enregistrements
+    # Récupérer tous les patients
     all_records = supabase.table("indicateurs_cliniques") \
         .select("*") \
         .order("registration_time", desc=True) \
@@ -195,23 +194,19 @@ if page == "Dashboard":
     if all_records:
         df_all = pd.DataFrame(all_records)
 
-        # --- FILTRES ---
+        # --- FILTRES PAR NOM ET PRÉNOM ---
         st.markdown("### 🔍 Filtrer les patients")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
-            filter_service = st.selectbox("Service / Unité", options=["Tous"] + df_all["patient_service"].dropna().unique().tolist(), key="filter_service")
+            filter_first_name = st.text_input("Filtrer par prénom", key="filter_first_name")
         with col2:
-            filter_sex = st.selectbox("Sexe", options=["Tous"] + df_all["patient_sex"].dropna().unique().tolist(), key="filter_sex")
-        with col3:
-            filter_evolution = st.selectbox("Évolution du patient", options=["Tous"] + df_all.get("evolution_patient", pd.Series([])).dropna().unique().tolist(), key="filter_evolution")
+            filter_last_name = st.text_input("Filtrer par nom", key="filter_last_name")
 
         df_filtered = df_all.copy()
-        if filter_service != "Tous":
-            df_filtered = df_filtered[df_filtered["patient_service"] == filter_service]
-        if filter_sex != "Tous":
-            df_filtered = df_filtered[df_filtered["patient_sex"] == filter_sex]
-        if filter_evolution != "Tous" and "evolution_patient" in df_filtered.columns:
-            df_filtered = df_filtered[df_filtered["evolution_patient"] == filter_evolution]
+        if filter_first_name:
+            df_filtered = df_filtered[df_filtered["patient_first_name"].str.contains(filter_first_name, case=False, na=False)]
+        if filter_last_name:
+            df_filtered = df_filtered[df_filtered["patient_last_name"].str.contains(filter_last_name, case=False, na=False)]
 
         # Afficher max 10 derniers
         st.dataframe(df_filtered.head(10), use_container_width=True)
