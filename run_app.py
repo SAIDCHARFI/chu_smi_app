@@ -318,3 +318,53 @@ if page == "Dashboard":
             "timestamp": datetime.now().isoformat()
         }).execute()
         st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
+    # ------------------------
+# ENREGISTRER
+# ------------------------
+if st.button("💾 Enregistrer"):
+    record = {
+        # ... toutes les informations du patient ...
+    }
+    supabase.table("indicateurs_cliniques").insert(record).execute()
+    supabase.table("activity_logs").insert({
+        "username": username,
+        "action": f"Enregistrement patient {patient_first_name} {patient_last_name}",
+        "timestamp": datetime.now().isoformat()
+    }).execute()
+    st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
+
+# ------------------------
+# AFFICHER LES 10 DERNIERS PATIENTS ET TÉLÉCHARGER AUTOMATIQUEMENT
+# ------------------------
+st.subheader("🗂️ Derniers patients enregistrés")
+
+latest_records = supabase.table("indicateurs_cliniques") \
+    .select("*") \
+    .order("registration_time", desc=True) \
+    .limit(10) \
+    .execute().data
+
+if latest_records:
+    df_latest = pd.DataFrame(latest_records)
+    st.dataframe(
+        df_latest[[
+            "patient_first_name", "patient_last_name", "patient_age",
+            "patient_sex", "patient_service", "registration_time"
+        ]],
+        use_container_width=True
+    )
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_latest.to_excel(writer, index=False, sheet_name="Derniers Patients")
+        writer.save()
+
+    st.download_button(
+        label="⬇️ Télécharger les données Excel",
+        data=output.getvalue(),
+        file_name="derniers_patients.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        key="download_latest_patients"
+    )
+else:
+    st.info("Aucun patient enregistré pour le moment")
