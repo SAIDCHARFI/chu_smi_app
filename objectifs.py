@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client
 import plotly.express as px
+from supabase import create_client
 from io import BytesIO
+from datetime import timedelta
 
 # ------------------------
 # SUPABASE CLIENT
@@ -11,142 +12,190 @@ SUPABASE_URL = "https://pvjdgddzuzarygaxyxuw.supabase.co"
 SUPABASE_KEY = "sb_publishable_ilPGwOE_zkgfeqp-PosqPA_7mxrgfbF"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 # ------------------------
-# FONCTION PRINCIPALE
+# UTILS
+# ------------------------
+def safe_pct(num, den):
+    return (num / den * 100) if den else 0
+
+
+def trend(current, previous):
+    if previous == 0:
+        return "➡️ Stable"
+    diff = current - previous
+    if diff > 0:
+        return "🔺 En hausse"
+    elif diff < 0:
+        return "🔻 En baisse"
+    return "➡️ Stable"
+
+
+def status_threshold(value, target, mode="lt"):
+    if mode == "lt":  # value < target
+        return "🟢 Conforme" if value < target else "🔴 Non conforme"
+    else:  # value > target
+        return "🟢 Conforme" if value > target else "🔴 Non conforme"
+
+
+# ------------------------
+# MAIN FUNCTION
 # ------------------------
 def run_objectifs():
     st.subheader("🎯 Objectifs & Indicateurs Cliniques")
 
     # ------------------------
-    # CHARGEMENT DES DONNÉES
+    # LOAD DATA
     # ------------------------
     records = supabase.table("indicateurs_cliniques").select("*").execute().data
     if not records:
-        st.info("Aucune donnée disponible pour calculer les indicateurs.")
+        st.info("Aucune donnée disponible.")
         return
 
     df = pd.DataFrame(records)
-
-    # Sécurisation dates
-    df["registration_time"] = pd.to_datetime(
-        df["registration_time"],
-        errors="coerce"
-    )
-    df = df.dropna(subset=["registration_time"])
+    df["registration_time"] = pd.to_datetime(df["registration_time"], errors="coerce")
 
     # ------------------------
-    # FILTRES
+    # FILTERS
     # ------------------------
-    st.markdown("### 🔎 Filtres")
+    col1, col2, col3 = st.columns(3)
 
-    col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
-            "Date début",
-            df["registration_time"].min().date()
+            "Date début", df["registration_time"].min().date()
         )
     with col2:
         end_date = st.date_input(
-            "Date fin",
-            df["registration_time"].max().date()
+            "Date fin", df["registration_time"].max().date()
         )
+    with col3:
+        service = st.text_input("Service (optionnel)")
 
-    service_filter = st.text_input(
-        "Service (laisser vide pour tous)"
-    )
-
-    df_filtered = df[
+    df_period = df[
         (df["registration_time"].dt.date >= start_date)
         & (df["registration_time"].dt.date <= end_date)
     ]
 
-    if service_filter:
-        df_filtered = df_filtered[
-            df_filtered["patient_service"]
-            .str.contains(service_filter, case=False, na=False)
+    if service:
+        df_period = df_period[
+            df_period["patient_service"].str.contains(service, case=False, na=False)
         ]
 
-    if df_filtered.empty:
-        st.warning("Aucune donnée pour ces filtres.")
-        return
+    # période précédente (pour tendance)
+    delta = (end_date - start_date).days or 1
+    prev_start = start_date - timedelta(days=delta)
+    prev_end = start_date
+
+    df_prev = df[
+        (df["registration_time"].dt.date >= prev_start)
+        & (df["registration_time"].dt.date < prev_end)
+    ]
 
     # ------------------------
-    # CALCUL DES INDICATEURS
+    # COUNTS
     # ------------------------
-    total_patients = len(df_filtered)
+    total = len(df_period)
 
-    df_filtered["nb_incidents"] = df_filtered["nb_incidents"].fillna(0)
+    nb_incidents = df_period["nb_incidents"].fillna(0).sum()
+    nb_ias = (df_period["infection_soins"] == "Oui").sum()
+    nb_readm = (df_period["readmission"] == "Oui").sum()
+    nb_dossiers_ok = (df_period["dossier_complet"] == "Oui").sum()
+    nb_effets_graves = (df_period["effets_graves"] == "Oui").sum()
+    delai_moyen = df_period["delai_admission"].mean()
+    nb_diag_ok = (df_period["diagnostic_etabli"] == "Oui").sum()
+    nb_plaintes = (df_period["plaintes_reclamations"] == "Oui").sum()
 
-    nb_incidents = df_filtered["nb_incidents"].sum()
-    nb_ias = (df_filtered["infection_soins"] == "Oui").sum()
-    nb_readmission = (df_filtered["readmission"] == "Oui").sum()
-    nb_dossiers_complets = (df_filtered["dossier_complet"] == "Oui").sum()
-    nb_effets_graves = (df_filtered["effets_graves"] == "Oui").sum()
-    delai_moyen = df_filtered["delai_admission"].mean()
-    nb_diag_ok = (df_filtered["diagnostic_etabli"] == "Oui").sum()
-    nb_plaintes = (df_filtered["plaintes_reclamations"] == "Oui").sum()
+    evol = df_period["evolution_patient"].value_counts()
 
-    nb_remission = (df_filtered["evolution_patient"] == "Rémission").sum()
-    nb_echec = (df_filtered["evolution_patient"] == "Échec de traitement").sum()
-    nb_rechute = (df_filtered["evolution_patient"] == "Rechute").sum()
-    nb_mortalite = (df_filtered["evolution_patient"] == "Mortalité").sum()
-
-    indicateurs = {
-        "Taux d'incidents (%)": nb_incidents / total_patients * 100,
-        "Taux IAS (%)": nb_ias / total_patients * 100,
-        "Taux de réadmission (%)": nb_readmission / total_patients * 100,
-        "Traçabilité (%)": nb_dossiers_complets / total_patients * 100,
-        "Effets indésirables graves (/1000 patients)": nb_effets_graves / total_patients * 1000,
-        "Délai moyen admission (jours)": delai_moyen,
-        "Dossiers complets avec diagnostic (%)": nb_diag_ok / total_patients * 100,
-        "Rémission (%)": nb_remission / total_patients * 100,
-        "Échec (%)": nb_echec / total_patients * 100,
-        "Rechute (%)": nb_rechute / total_patients * 100,
-        "Mortalité (%)": nb_mortalite / total_patients * 100,
-        "Taux de plaintes (%)": nb_plaintes / total_patients * 100,
+    # période précédente
+    total_prev = len(df_prev)
+    prev_vals = {
+        "effets": (df_prev["effets_graves"] == "Oui").sum(),
+        "plaintes": (df_prev["plaintes_reclamations"] == "Oui").sum(),
+        "remission": (df_prev["evolution_patient"] == "Rémission").sum(),
+        "echec": (df_prev["evolution_patient"] == "Échec de traitement").sum(),
+        "rechute": (df_prev["evolution_patient"] == "Rechute").sum(),
+        "mort": (df_prev["evolution_patient"] == "Mortalité").sum(),
     }
 
     # ------------------------
-    # AFFICHAGE KPI
+    # KPI VALUES
     # ------------------------
-    st.markdown("### 📌 Indicateurs clés")
+    kpis = [
+        ("Taux d'incidents (%)", safe_pct(nb_incidents, total), "< 2 %", status_threshold(safe_pct(nb_incidents, total), 2, "lt")),
+        ("Taux IAS (%)", safe_pct(nb_ias, total), "< 3 %", status_threshold(safe_pct(nb_ias, total), 3, "lt")),
+        ("Taux de réadmission (%)", safe_pct(nb_readm, total), "< 10 %", status_threshold(safe_pct(nb_readm, total), 10, "lt")),
+        ("Traçabilité dossiers (%)", safe_pct(nb_dossiers_ok, total), "> 95 %", status_threshold(safe_pct(nb_dossiers_ok, total), 95, "gt")),
+        ("Délai moyen admission (jours)", delai_moyen, "< 30", status_threshold(delai_moyen, 30, "lt")),
+        ("Dossiers complets avec diagnostic (%)", safe_pct(nb_diag_ok, total), "> 90 %", status_threshold(safe_pct(nb_diag_ok, total), 90, "gt")),
+    ]
 
-    cols = st.columns(4)
-    for i, (label, value) in enumerate(indicateurs.items()):
-        with cols[i % 4]:
-            st.metric(label, f"{value:.2f}")
+    st.subheader("📌 KPI avec objectifs")
+    cols = st.columns(3)
+    for i, (name, val, target, status) in enumerate(kpis):
+        with cols[i % 3]:
+            st.metric(name, f"{val:.2f}", target)
+            st.caption(status)
 
     st.divider()
 
     # ------------------------
-    # GRAPHIQUES
+    # TRENDS
     # ------------------------
-    st.markdown("### 📊 Visualisations")
+    st.subheader("📈 KPI en tendance")
 
-    fig1 = px.bar(
-        x=["Incidents", "IAS", "Réadmissions", "Plaintes"],
-        y=[nb_incidents, nb_ias, nb_readmission, nb_plaintes],
-        title="Incidents, IAS, Réadmissions et Plaintes",
-        labels={"x": "Indicateur", "y": "Nombre"}
-    )
-    st.plotly_chart(fig1, use_container_width=True)
+    trend_data = {
+        "Effets indésirables graves /1000": (
+            safe_pct(nb_effets_graves, total) * 10,
+            safe_pct(prev_vals["effets"], total_prev) * 10,
+        ),
+        "Rémission (%)": (
+            safe_pct(evol.get("Rémission", 0), total),
+            safe_pct(prev_vals["remission"], total_prev),
+        ),
+        "Échec (%)": (
+            safe_pct(evol.get("Échec de traitement", 0), total),
+            safe_pct(prev_vals["echec"], total_prev),
+        ),
+        "Rechute (%)": (
+            safe_pct(evol.get("Rechute", 0), total),
+            safe_pct(prev_vals["rechute"], total_prev),
+        ),
+        "Mortalité (%)": (
+            safe_pct(evol.get("Mortalité", 0), total),
+            safe_pct(prev_vals["mort"], total_prev),
+        ),
+        "Taux de plaintes (%)": (
+            safe_pct(nb_plaintes, total),
+            safe_pct(prev_vals["plaintes"], total_prev),
+        ),
+    }
 
-    fig2 = px.pie(
-        names=["Rémission", "Échec", "Rechute", "Mortalité"],
-        values=[nb_remission, nb_echec, nb_rechute, nb_mortalite],
-        title="Évolution des patients"
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    rows = []
+    for k, (cur, prev) in trend_data.items():
+        rows.append({
+            "KPI": k,
+            "Valeur actuelle": round(cur, 2),
+            "Valeur précédente": round(prev, 2),
+            "Tendance": trend(cur, prev)
+        })
 
-    st.divider()
+    df_trend = pd.DataFrame(rows)
+    st.dataframe(df_trend, use_container_width=True)
+
+    fig = px.bar(df_trend, x="KPI", y="Valeur actuelle", title="Comparaison des KPI")
+    st.plotly_chart(fig, use_container_width=True)
 
     # ------------------------
-    
-    # ------------------------
-    # EXPORT EXCEL
+    # EXPORT
     # ------------------------
     output = BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df_filtered.to_excel(writer, index=False, sheet_name="Objectifs_KPI")
+        df_trend.to_excel(writer, index=False, sheet_name="KPI_Objectifs")
 
-   
+    st.download_button(
+        "⬇️ Télécharger les KPI",
+        data=output.getvalue(),
+        file_name="kpi_objectifs.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
