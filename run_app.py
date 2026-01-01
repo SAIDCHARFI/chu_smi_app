@@ -121,9 +121,10 @@ st.divider()
 # ------------------------
 st.subheader("📈 Pertinence des soins")
 
-pertinence_bio = st.radio("Pertinence des examens biologiques ?", ["Oui", "Non"], horizontal=True, key="pert_bio")
+# Corrected logic: if Non, show redondants / non pertinents
+pertinence_bio = st.radio("Pertinence des examens biologiques ?", ["Non", "Oui"], horizontal=True, key="pert_bio")
 examens_bio_redondants = examens_bio_non_pertinents = False
-if pertinence_bio == "Oui":
+if pertinence_bio == "Non":
     examens_bio_redondants = st.checkbox("Examens redondants", key="bio_redond")
     examens_bio_non_pertinents = st.checkbox("Non pertinents", key="bio_nonpert")
 
@@ -135,7 +136,6 @@ st.divider()
 # SATISFACTION DES PATIENTS
 # ------------------------
 st.subheader("😊 Satisfaction des Patients")
-
 satisfaction_patient = st.slider("Satisfaction patient", 1, 5, 3, key="satisf")
 plaintes_reclamations = st.radio("Plaintes ou réclamations reçues résolues ?", ["Oui", "Non"], horizontal=True, key="plaintes")
 
@@ -154,44 +154,44 @@ st.divider()
 # ------------------------
 if st.button("💾 Enregistrer"):
     record = {
-    "patient_first_name": patient_first_name or None,
-    "patient_last_name": patient_last_name or None,
-    "patient_age": patient_age,
-    "patient_sex": patient_sex or None,
-    "patient_service": patient_service or None,
-    "patient_motif": patient_motif or None,
-    "patient_diagnosis": patient_diagnosis or None,
-    "incident": incident,
-    "nb_incidents": int(nb_incidents) if nb_incidents is not None else None,
-    "incident_description": incident_description or None,
-    "readmission": readmission,
-    "readmission_type": readmission_type or None,
-    "infection_soins": infection_soins,
-    "infection_description": infection_description or None,
-    "effets_graves": effets_graves,
-    "effets_graves_description": effets_graves_description or None,
-    "delai_admission": delai_admission,
-    "duree_sejour": duree_sejour,
-    "cause_long_sejour": cause_long_sejour or None,
-    "diagnostic_etabli": diagnostic_etabli,
-    "dossier_complet": dossier_complet,
-    "cause_dossier_incomplet": cause_dossier_incomplet or None,
-    "evolution_patient": evolution_patient,
-    "remission_type": remission_type or None,
-    "echec_traitement": echec_traitement or None,
-    "cause_echec": cause_echec or None,
-    "rechute": rechute or None,
-    "cause_rechute": cause_rechute or None,
-    "mortalite_cause": mortalite_cause or None,
-    "pertinence_bio": pertinence_bio,
-    "examens_bio_redondants": examens_bio_redondants,
-    "examens_bio_non_pertinents": examens_bio_non_pertinents,
-    "pertinence_imagerie": pertinence_imagerie,
-    "satisfaction_patient": satisfaction_patient,
-    "plaintes_reclamations": plaintes_reclamations,
-    "telemedecine": telemedecine,
-    "registration_time": datetime.now().isoformat()
-}
+        "patient_first_name": patient_first_name or None,
+        "patient_last_name": patient_last_name or None,
+        "patient_age": patient_age,
+        "patient_sex": patient_sex or None,
+        "patient_service": patient_service or None,
+        "patient_motif": patient_motif or None,
+        "patient_diagnosis": patient_diagnosis or None,
+        "incident": incident,
+        "nb_incidents": int(nb_incidents) if nb_incidents is not None else None,
+        "incident_description": incident_description or None,
+        "readmission": readmission,
+        "readmission_type": readmission_type or None,
+        "infection_soins": infection_soins,
+        "infection_description": infection_description or None,
+        "effets_graves": effets_graves,
+        "effets_graves_description": effets_graves_description or None,
+        "delai_admission": delai_admission,
+        "duree_sejour": duree_sejour,
+        "cause_long_sejour": cause_long_sejour or None,
+        "diagnostic_etabli": diagnostic_etabli,
+        "dossier_complet": dossier_complet,
+        "cause_dossier_incomplet": cause_dossier_incomplet or None,
+        "evolution_patient": evolution_patient,
+        "remission_type": remission_type or None,
+        "echec_traitement": echec_traitement or None,
+        "cause_echec": cause_echec or None,
+        "rechute": rechute or None,
+        "cause_rechute": cause_rechute or None,
+        "mortalite_cause": mortalite_cause or None,
+        "pertinence_bio": pertinence_bio,
+        "examens_bio_redondants": examens_bio_redondants,
+        "examens_bio_non_pertinents": examens_bio_non_pertinents,
+        "pertinence_imagerie": pertinence_imagerie,
+        "satisfaction_patient": satisfaction_patient,
+        "plaintes_reclamations": plaintes_reclamations,
+        "telemedecine": telemedecine,
+        "registration_time": datetime.now().isoformat()
+    }
 
     supabase.table("indicateurs_cliniques").insert(record).execute()
     supabase.table("activity_logs").insert({
