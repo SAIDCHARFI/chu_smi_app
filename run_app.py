@@ -65,10 +65,13 @@ else:
 # SELECT PAGE
 # ------------------------
 if role == "admin":
-    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics"])
+    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics", "Objectifs"])
 else:
     page = "Dashboard"
 
+if page == "Objectifs":
+    from objectifs import run_objectifs
+    run_objectifs()
 # ------------------------
 # USER MANAGEMENT (ADMIN)
 # ------------------------
