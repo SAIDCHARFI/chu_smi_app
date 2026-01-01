@@ -336,6 +336,9 @@ if st.button("💾 Enregistrer"):
 # ------------------------
 # AFFICHER LES 10 DERNIERS PATIENTS ET TÉLÉCHARGER AUTOMATIQUEMENT
 # ------------------------
+# ------------------------
+# AFFICHER LES 10 DERNIERS PATIENTS ET TÉLÉCHARGER AUTOMATIQUEMENT
+# ------------------------
 st.subheader("🗂️ Derniers patients enregistrés")
 
 latest_records = supabase.table("indicateurs_cliniques") \
