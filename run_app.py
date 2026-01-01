@@ -182,37 +182,50 @@ if page == "Dashboard":
         st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
 
     # ------------------------
-    # AFFICHER LES 10 DERNIERS PATIENTS ET TÉLÉCHARGER AUTOMATIQUEMENT
+    # AFFICHER LES 10 DERNIERS PATIENTS AVEC FILTRES
     # ------------------------
     st.subheader("🗂️ Derniers patients enregistrés")
 
-    latest_records = supabase.table("indicateurs_cliniques") \
+    # Récupérer tous les enregistrements
+    all_records = supabase.table("indicateurs_cliniques") \
         .select("*") \
         .order("registration_time", desc=True) \
-        .limit(10) \
         .execute().data
 
-    if latest_records:
-        df_latest = pd.DataFrame(latest_records)
-        st.dataframe(
-            df_latest[[
-                "patient_first_name", "patient_last_name", "patient_age",
-                "patient_sex", "patient_service", "registration_time"
-            ]],
-            use_container_width=True
-        )
+    if all_records:
+        df_all = pd.DataFrame(all_records)
 
+        # --- FILTRES ---
+        st.markdown("### 🔍 Filtrer les patients")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            filter_service = st.selectbox("Service / Unité", options=["Tous"] + df_all["patient_service"].dropna().unique().tolist(), key="filter_service")
+        with col2:
+            filter_sex = st.selectbox("Sexe", options=["Tous"] + df_all["patient_sex"].dropna().unique().tolist(), key="filter_sex")
+        with col3:
+            filter_evolution = st.selectbox("Évolution du patient", options=["Tous"] + df_all.get("evolution_patient", pd.Series([])).dropna().unique().tolist(), key="filter_evolution")
+
+        df_filtered = df_all.copy()
+        if filter_service != "Tous":
+            df_filtered = df_filtered[df_filtered["patient_service"] == filter_service]
+        if filter_sex != "Tous":
+            df_filtered = df_filtered[df_filtered["patient_sex"] == filter_sex]
+        if filter_evolution != "Tous" and "evolution_patient" in df_filtered.columns:
+            df_filtered = df_filtered[df_filtered["evolution_patient"] == filter_evolution]
+
+        # Afficher max 10 derniers
+        st.dataframe(df_filtered.head(10), use_container_width=True)
+
+        # --- TELECHARGEMENT DE TOUS LES PATIENTS ---
         output = BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df_latest.to_excel(writer, index=False, sheet_name="Derniers Patients")
-            
-
+            df_all.to_excel(writer, index=False, sheet_name="Tous les Patients")
         st.download_button(
-            label="⬇️ Télécharger les données Excel",
+            label="⬇️ Télécharger tous les patients",
             data=output.getvalue(),
-            file_name="derniers_patients.xlsx",
+            file_name="tous_les_patients.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="download_latest_patients_dashboard"
+            key="download_all_patients"
         )
     else:
         st.info("Aucun patient enregistré pour le moment")
