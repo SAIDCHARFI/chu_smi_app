@@ -16,9 +16,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ------------------------
 def run_objectifs():
     st.set_page_config(page_title="Objectifs & KPI", layout="wide")
-
     st.subheader("🎯 Objectifs et Indicateurs Cliniques")
-
     # ------------------------
     # FILTRES
     # ------------------------
@@ -27,10 +25,7 @@ def run_objectifs():
         st.info("Aucune donnée disponible pour calculer les indicateurs.")
         st.stop()
 
-    # Convert to DataFrame
     df = pd.DataFrame(records)
-
-    # Convert registration_time to datetime
     df['registration_time'] = pd.to_datetime(df['registration_time'])
 
     col1, col2 = st.columns(2)
@@ -41,8 +36,8 @@ def run_objectifs():
 
     service_filter = st.text_input("Filtrer par service (laisser vide = tous)")
 
-    # Filter by date and service
-    df_filtered = df[(df['registration_time'].dt.date >= start_date) & (df['registration_time'].dt.date <= end_date)]
+    df_filtered = df[(df['registration_time'].dt.date >= start_date) &
+                     (df['registration_time'].dt.date <= end_date)]
     if service_filter:
         df_filtered = df_filtered[df_filtered['patient_service'].str.contains(service_filter, case=False, na=False)]
 
@@ -59,15 +54,13 @@ def run_objectifs():
     nb_dossiers_complet_diag = df_filtered[df_filtered['diagnostic_etabli'] == 'Oui'].shape[0]
     nb_plaintes = df_filtered[df_filtered['plaintes_reclamations'] == 'Oui'].shape[0]
 
-    # Évolution patients
     nb_remission = df_filtered[df_filtered['evolution_patient'] == 'Rémission'].shape[0]
     nb_echec = df_filtered[df_filtered['evolution_patient'] == 'Échec de traitement'].shape[0]
     nb_rechute = df_filtered[df_filtered['evolution_patient'] == 'Rechute'].shape[0]
     nb_mortalite = df_filtered[df_filtered['evolution_patient'] == 'Mortalité'].shape[0]
 
-    # Calculs
     indicateurs = {
-        'Taux d'incidents (%)': (nb_incidents / total_patients * 100) if total_patients else 0,
+        'Taux d\'incidents (%)': (nb_incidents / total_patients * 100) if total_patients else 0,
         'Taux IAS (%)': (nb_ias / total_patients * 100) if total_patients else 0,
         'Taux de réadmission (%)': (nb_readmission / total_patients * 100) if total_patients else 0,
         'Traçabilité (%)': (nb_dossiers_complets / total_patients * 100) if total_patients else 0,
@@ -90,38 +83,3 @@ def run_objectifs():
             st.metric(label=k, value=f"{v:.2f}")
 
     st.divider()
-
-    # ------------------------
-    # GRAPHIQUES
-    # ------------------------
-    st.subheader("📊 Visualisation des indicateurs")
-
-    # Histogramme incidents vs IAS
-    fig1 = px.bar(x=['Incidents', 'IAS', 'Réadmissions', 'Plaintes'], y=[nb_incidents, nb_ias, nb_readmission, nb_plaintes], labels={'x':'Indicateur','y':'Nombre'}, title='Incidents, IAS, Réadmissions, Plaintes')
-    st.plotly_chart(fig1, use_container_width=True)
-
-    # Évolution patients
-    fig2 = px.pie(names=['Rémission','Échec','Rechute','Mortalité'], values=[nb_remission, nb_echec, nb_rechute, nb_mortalite], title='Évolution des patients')
-    st.plotly_chart(fig2, use_container_width=True)
-
-    # ------------------------
-    # TABLEAU DES PATIENTS FILTRÉS
-    # ------------------------
-    st.subheader("🗂️ Tableau détaillé des patients filtrés")
-    st.dataframe(df_filtered, use_container_width=True)
-
-    # Export Excel
-    from io import BytesIO
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df_filtered.to_excel(writer, index=False, sheet_name="Patients Filtrés")
-
-    st.download_button(
-        label="⬇️ Télécharger les patients filtrés",
-        data=output.getvalue(),
-        file_name="patients_filtres.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-
-
