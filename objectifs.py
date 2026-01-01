@@ -141,23 +141,7 @@ def run_objectifs():
     st.divider()
 
     # ------------------------
-    # TABLEAU DÉTAILLÉ
-    # ------------------------
-    st.markdown("### 🗂️ Patients filtrés")
-
-    st.dataframe(
-        df_filtered[[
-            "patient_first_name",
-            "patient_last_name",
-            "patient_service",
-            "registration_time",
-            "evolution_patient",
-            "readmission",
-            "infection_soins"
-        ]],
-        use_container_width=True
-    )
-
+    
     # ------------------------
     # EXPORT EXCEL
     # ------------------------
