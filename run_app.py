@@ -40,7 +40,7 @@ if "authenticator" not in st.session_state:
         cookie_name,
         cookie_key,
         cookie_expiry_days,
-        auto_hash=True
+        prehashed=True
     )
 authenticator = st.session_state["authenticator"]
 

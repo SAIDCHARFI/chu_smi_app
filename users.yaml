@@ -5,9 +5,10 @@ cookie:
 usernames:
   alice:
     name: Alice
-    password: password123
+    password: "$2b$12$mvkrmKO2YBoub1OF6iGmvuLz4p/coIaa7bTKv30P4za1g/FIJovLu"
     role: admin
   salma:
     name: boustani
-    password: salma
+    password: "$2b$12$eMNesMGRjEqZJOzK63lAr.lAPUu.YtDUHNMGCRDXbX68CN93IbUBC"
     role: user
+
