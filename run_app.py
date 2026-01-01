@@ -13,7 +13,7 @@ st.title("📊 Indicateurs de Suivi Clinique")
 # SUPABASE CLIENT
 # ------------------------
 SUPABASE_URL = "https://pvjdgddzuzarygaxyxuw.supabase.co"
-SUPABASE_KEY = "YOUR_SUPABASE_KEY"
+SUPABASE_KEY = "sb_publishable_ilPGwOE_zkgfeqp-PosqPA_7mxrgfbF"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ------------------------
