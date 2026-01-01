@@ -5,7 +5,6 @@ from supabase import create_client, Client
 import yaml
 import streamlit_authenticator as stauth
 from datetime import datetime
-import plotly.express as px
 from io import BytesIO
 
 # ------------------------
@@ -36,11 +35,7 @@ cookie_expiry_days = users_config["cookie"]["expiry_days"]
 # ------------------------
 if "authenticator" not in st.session_state:
     st.session_state["authenticator"] = stauth.Authenticate(
-        credentials,
-        cookie_name,
-        cookie_key,
-        cookie_expiry_days,
-        auto_hash=True
+        credentials, cookie_name, cookie_key, cookie_expiry_days, auto_hash=True
     )
 authenticator = st.session_state["authenticator"]
 
@@ -64,10 +59,9 @@ else:
 # ------------------------
 # ADMIN PAGES
 # ------------------------
-if role == "admin":
-    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics"])
-else:
-    page = "Dashboard"
+page = st.sidebar.selectbox(
+    "Menu", ["Dashboard", "User Management", "Statistics"] if role == "admin" else ["Dashboard"]
+)
 
 # ------------------------
 # USER MANAGEMENT (ADMIN)
@@ -98,8 +92,7 @@ if page == "User Management":
                     "role": new_role
                 }
                 with open("users.yaml", "w") as file:
-                    yaml.dump({"usernames": credentials["usernames"],
-                               "cookie": users_config["cookie"]}, file)
+                    yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
                 st.success(f"Utilisateur {new_username} ajouté !")
 
     st.markdown("### ❌ Supprimer un utilisateur")
@@ -108,8 +101,7 @@ if page == "User Management":
         if del_username in credentials["usernames"]:
             del credentials["usernames"][del_username]
             with open("users.yaml", "w") as file:
-                yaml.dump({"usernames": credentials["usernames"],
-                           "cookie": users_config["cookie"]}, file)
+                yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
             st.success(f"Utilisateur {del_username} supprimé !")
 
     st.markdown("### 📝 Journaux d'activité")
@@ -131,11 +123,9 @@ if page == "Statistics":
         if numeric_cols:
             mean_df = df_db[numeric_cols].mean().reset_index()
             mean_df.columns = ["Indicateur", "Moyenne"]
-            fig_bar = px.bar(mean_df, x="Indicateur", y="Moyenne", title="Moyennes des indicateurs")
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(px.bar(mean_df, x="Indicateur", y="Moyenne", title="Moyennes des indicateurs"), use_container_width=True)
             for col in numeric_cols:
-                fig_hist = px.histogram(df_db, x=col, title=f"Distribution de {col}", nbins=20)
-                st.plotly_chart(fig_hist, use_container_width=True)
+                st.plotly_chart(px.histogram(df_db, x=col, title=f"Distribution de {col}", nbins=20), use_container_width=True)
 
 # ------------------------
 # DASHBOARD
@@ -143,86 +133,101 @@ if page == "Statistics":
 if page == "Dashboard":
     st.subheader("👤 Informations patient")
     with st.form("form_indicateurs"):
-        # Patient info
-        patient_first_name = st.text_input("Prénom du patient")
-        patient_last_name = st.text_input("Nom du patient")
+        # ------------------------ PATIENT INFO ------------------------
+        patient_first_name = st.text_input("Prénom du patient", key="first_name")
+        patient_last_name = st.text_input("Nom du patient", key="last_name")
+        patient_age = st.number_input("Âge", min_value=0, max_value=120, step=1, key="age")
+        patient_sex = st.radio("Sexe", ["Masculin", "Féminin"], horizontal=True, key="sex")
+        patient_service = st.text_input("Service / Unité", key="service")
+        patient_motif = st.text_area("Motif d’admission / Consultation", key="motif")
+        patient_diagnosis = st.text_area("Diagnostic principal", key="diagnosis")
         registration_time = datetime.now()
 
-        # Clinical indicators
-        st.subheader("⏱ Indicateurs cliniques")
-        delai_diagnostic = st.number_input("Délai diagnostic (jours)", min_value=0, step=1)
-        bio = st.checkbox("Examens biologiques pertinents")
-        imagerie = st.checkbox("Examens d’imagerie pertinents")
+        # ------------------------ QUALITÉ ET SÉCURITÉ DES SOINS ------------------------
+        st.subheader("🛡️ Qualité et sécurité des soins")
+        incident = st.radio("Incidents / erreurs médicales", ["Non", "Oui"], horizontal=True, key="incident")
+        nb_incidents = st.number_input("Nombre d’incidents / erreurs", min_value=0, step=1, key="nb_incidents") if incident=="Oui" else 0
+        readmission = st.radio("Réadmission", ["Non", "Oui"], horizontal=True, key="readmission")
+        readmission_type = st.text_input("Cause de la réadmission", key="readmission_type") if readmission=="Oui" else ""
+        infection_soins = st.radio("Infections liées aux soins", ["Non", "Oui"], horizontal=True, key="infection")
+        infection_description = st.text_area("Préciser l’infection liée aux soins", key="infection_desc") if infection_soins=="Oui" else ""
+        effets_graves = st.radio("Effets indésirables graves", ["Non", "Oui"], horizontal=True, key="effets")
+        effets_graves_description = st.text_area("Décrire les effets indésirables graves", key="effets_desc") if effets_graves=="Oui" else ""
 
-        # Therapeutic indicators
-        st.subheader("💊 Indicateurs thérapeutiques")
-        corticoides = st.checkbox("Utilisation des corticoïdes")
-        effets = st.checkbox("Effets indésirables médicamenteux")
-        adhesion = st.checkbox("Adhésion aux recommandations")
-        delai_ims = st.number_input("Délai introduction IMS / biothérapies (jours)", min_value=0, step=1)
+        # ------------------------ PERFORMANCE CLINIQUE ------------------------
+        st.subheader("💊 Performance clinique")
+        delai_admission = st.number_input("Délai d’admission / prise en charge (jours)", min_value=0, step=1, key="delai_admission")
+        duree_sejour = st.number_input("Durée du séjour (jours)", min_value=0, step=1, key="duree_sejour")
+        cause_long_sejour = st.text_area("Cause du séjour > 10 jours", key="cause_long_sejour") if duree_sejour>10 else ""
+        diagnostic_etabli = st.radio("Patient sorti avec diagnostic établi ?", ["Oui", "Non"], horizontal=True, key="diagnostic_etabli")
+        dossier_complet = st.radio("Dossier complet avec diagnostic ?", ["Oui", "Non"], horizontal=True, key="dossier_complet")
+        cause_dossier_incomplet = st.text_area("Si Non, indiquer les éléments manquants", key="cause_dossier_incomplet") if dossier_complet=="Non" else ""
+        evolution_patient = st.selectbox("Évolution du patient", ["Rémission", "Échec de traitement", "Rechute", "Mortalité"], key="evolution")
+        remission_type = st.selectbox("Type de rémission", ["Complète","Partielle"], key="remission_type") if evolution_patient=="Rémission" else ""
+        echec_traitement = st.radio("Échec confirmé ?", ["Oui","Non"], horizontal=True, key="echec") if evolution_patient=="Échec de traitement" else ""
+        cause_echec = st.text_area("Cause de l’échec de traitement", key="cause_echec") if echec_traitement=="Oui" else ""
+        rechute = st.radio("Rechute ?", ["Oui","Non"], horizontal=True, key="rechute") if evolution_patient=="Rechute" else ""
+        cause_rechute = st.text_area("Préciser la cause de la rechute", key="cause_rechute") if rechute=="Oui" else ""
+        mortalite_cause = st.text_area("Préciser la cause du décès", key="mortalite_cause") if evolution_patient=="Mortalité" else ""
 
-        # Evolution indicators
-        st.subheader("📈 Indicateurs d’évolution")
-        remission = st.checkbox("Rémission")
-        rechute = st.checkbox("Rechute")
-        duree_sejour = st.number_input("Durée du séjour (jours)", min_value=0, step=1)
-        mortalite = st.checkbox("Décès")
+        # ------------------------ PERTINENCE DES SOINS ------------------------
+        st.subheader("📈 Pertinence des soins")
+        pertinence_bio = st.radio("Pertinence des examens biologiques ?", ["Oui","Non"], horizontal=True, key="pertinence_bio")
+        examens_bio_redondants = st.checkbox("Examens redondants", key="examens_redondants") if pertinence_bio=="Oui" else False
+        examens_bio_non_pertinents = st.checkbox("Non pertinents", key="examens_non_pertinents") if pertinence_bio=="Oui" else False
+        pertinence_imagerie = st.radio("Pertinence des examens d’imagerie ?", ["Oui","Non"], horizontal=True, key="pertinence_imagerie")
 
-        # Safety indicators
-        st.subheader("🏥 Indicateurs de sécurité des soins")
-        inf_soins = st.checkbox("Infections associées aux soins")
-        inf_opp = st.checkbox("Infections opportunistes")
-        st.caption("### 🔁 Réhospitalisations")
-        rehosp_comp = st.checkbox("Complication")
-        rehosp_incompl = st.checkbox("PEC incomplète")
-        rehosp_autres = st.checkbox("Autres causes")
+        # ------------------------ SATISFACTION PATIENT ------------------------
+        st.subheader("😊 Satisfaction des Patients")
+        satisfaction_patient = st.slider("Satisfaction patient", 1,5,3, key="satisfaction_patient")
+        plaintes_resolues = st.radio("Plaintes ou réclamations reçues résolues ?", ["Oui","Non"], horizontal=True, key="plaintes_resolues")
 
-        # Organizational indicators
-        st.subheader("🏥 Indicateurs organisationnels")
-        duree_moy_sejour = st.number_input("Durée moyenne du séjour (jours)", min_value=0, step=1)
-        delai_examens = st.number_input("Délai réalisation des examens (jours)", min_value=0, step=1)
-        taux_hospit = st.number_input("Taux d’hospitalisation prolongée", min_value=0, step=1)
+        # ------------------------ INNOVATION / HUMANISATION ------------------------
+        st.subheader("🏥 Innovation et Humanisation")
+        acces_telemedecine = st.radio("Patient ayant accès à la télémedecine ou suivi à distance ?", ["Oui","Non"], horizontal=True, key="telemedecine")
 
-        # Quality
-        st.subheader("⭐ Qualité")
-        qualite = st.slider("Qualité de la traçabilité", 1, 5, 3)
-        satisfaction = st.slider("Satisfaction patient", 1, 5, 3)
-        observance = st.slider("Observance thérapeutique", 1, 5, 3)
-        education = st.checkbox("Éducation thérapeutique réalisée")
-
+        # ------------------------ SUBMIT ------------------------
         submit = st.form_submit_button("💾 Enregistrer")
         if submit:
             record = {
                 "patient_first_name": patient_first_name,
                 "patient_last_name": patient_last_name,
+                "patient_age": patient_age,
+                "patient_sex": patient_sex,
+                "patient_service": patient_service,
+                "patient_motif": patient_motif,
+                "patient_diagnosis": patient_diagnosis,
                 "registration_time": registration_time.isoformat(),
-                "delai_diagnostic": int(delai_diagnostic),
-                "pertinence_exam_bio": int(bio),
-                "pertinence_exam_imagerie": int(imagerie),
-                "utilisation_corticoides": int(corticoides),
-                "delai_introduction_ims_biotherapies": int(delai_ims),
-                "effets_indesirables_medicamenteux": int(effets),
-                "adhesion_recommandations": int(adhesion),
-                "remission": int(remission),
-                "rechute": int(rechute),
-                "duree_sejour": int(duree_sejour),
-                "mortalite": int(mortalite),
-                "infections_associees_soins": int(inf_soins),
-                "infections_opportunistes": int(inf_opp),
-                "rehosp_complication": int(rehosp_comp),
-                "rehosp_pec_incomplete": int(rehosp_incompl),
-                "rehosp_autres": int(rehosp_autres),
-                "duree_moyenne_sejour": float(duree_moy_sejour),
-                "delai_realisation_examens": int(delai_examens),
-                "taux_hospitalisation_prolongee": float(taux_hospit),
-                "qualite_tracabilite_dossiers": int(qualite),
-                "satisfaction_patient": int(satisfaction),
-                "observance_therapeutique": int(observance),
-                "education_therapeutique": int(education)
+                "incident": incident,
+                "nb_incidents": nb_incidents,
+                "readmission": readmission,
+                "readmission_type": readmission_type,
+                "infection_soins": infection_soins,
+                "infection_description": infection_description,
+                "effets_graves": effets_graves,
+                "effets_graves_description": effets_graves_description,
+                "delai_admission": delai_admission,
+                "duree_sejour": duree_sejour,
+                "cause_long_sejour": cause_long_sejour,
+                "diagnostic_etabli": diagnostic_etabli,
+                "dossier_complet": dossier_complet,
+                "cause_dossier_incomplet": cause_dossier_incomplet,
+                "evolution_patient": evolution_patient,
+                "remission_type": remission_type,
+                "echec_traitement": echec_traitement,
+                "cause_echec": cause_echec,
+                "rechute": rechute,
+                "cause_rechute": cause_rechute,
+                "mortalite_cause": mortalite_cause,
+                "pertinence_bio": pertinence_bio,
+                "examens_bio_redondants": examens_bio_redondants,
+                "examens_bio_non_pertinents": examens_bio_non_pertinents,
+                "pertinence_imagerie": pertinence_imagerie,
+                "satisfaction_patient": satisfaction_patient,
+                "plaintes_resolues": plaintes_resolues,
+                "acces_telemedecine": acces_telemedecine
             }
-            # Insert record
             supabase.table("indicateurs_cliniques").insert(record).execute()
-            # Log activity
             supabase.table("activity_logs").insert({
                 "username": username,
                 "action": f"Submitted clinical indicators for {patient_first_name} {patient_last_name}",
@@ -230,39 +235,9 @@ if page == "Dashboard":
             }).execute()
             st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
 
-    # Display saved data
-    st.divider()
-    st.subheader("📋 Données enregistrées")
-    records = supabase.table("indicateurs_cliniques").select("*").order("registration_time", desc=True).execute().data
-    df_db = pd.DataFrame(records)
-    if not df_db.empty:
-        filter_column = st.selectbox("Filtrer par colonne", df_db.columns)
-        if filter_column:
-            unique_values = df_db[filter_column].unique()
-            selected_values = st.multiselect(f"Sélectionner {filter_column}", unique_values, default=unique_values)
-            df_db = df_db[df_db[filter_column].isin(selected_values)]
-        st.dataframe(df_db, use_container_width=True)
+            # Display saved data
+            records = supabase.table("indicateurs_cliniques").select("*").order("registration_time", desc=True).execute().data
+            df_db = pd.DataFrame(records)
+            if not df_db.empty:
+                st.dataframe(df_db, use_container_width=True)
 
-    # Export options
-    st.subheader("💾 Exporter les données")
-    export_format = st.radio("Format d'export", ["CSV", "Excel"], horizontal=True)
-
-    if st.button("Exporter"):
-        if export_format == "CSV":
-            csv_data = df_db.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                "Télécharger CSV",
-                csv_data,
-                "indicateurs_cliniques.csv",
-                "text/csv"
-            )
-        else:
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                df_db.to_excel(writer, index=False, sheet_name="Indicateurs")
-            st.download_button(
-                label="Télécharger Excel",
-                data=output.getvalue(),
-                file_name="indicateurs_cliniques.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
