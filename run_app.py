@@ -79,10 +79,17 @@ if page == "Objectifs":
 # ------------------------
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
-    df_users = pd.DataFrame([{"username": u, "name": v["name"], "role": v.get("role", "user")}
-                             for u, v in credentials["usernames"].items()])
+
+    # Afficher les utilisateurs existants
+    df_users = pd.DataFrame([
+        {"username": u, "name": v["name"], "role": v.get("role", "user")}
+        for u, v in credentials["usernames"].items()
+    ])
     st.dataframe(df_users, use_container_width=True)
 
+    # ------------------------
+    # Ajouter un utilisateur
+    # ------------------------
     st.markdown("### ➕ Ajouter un utilisateur")
     with st.form("add_user_form"):
         new_username = st.text_input("Nom d'utilisateur")
@@ -90,18 +97,33 @@ if page == "User Management":
         new_password = st.text_input("Mot de passe", type="password")
         new_role = st.selectbox("Rôle", ["user", "admin"])
         add_user = st.form_submit_button("Ajouter")
+
         if add_user:
-            if new_username in credentials["usernames"]:
+            if not new_username or not new_password or not new_name:
+                st.warning("⚠️ Remplissez tous les champs obligatoires !")
+            elif new_username in credentials["usernames"]:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
-                #hashed_pw = stauth.Hasher([new_password]).generate()[0]
+                # Hasher le mot de passe avant stockage
                 from streamlit_authenticator import Hasher
                 hasher = Hasher()
                 hashed_pw = hasher.hash_password(new_password)
-                credentials["usernames"][new_username] = {"name": new_name, "password": hashed_pw, "role": new_role}
+
+                # Ajouter l'utilisateur au dictionnaire
+                credentials["usernames"][new_username] = {
+                    "name": new_name,
+                    "password": hashed_pw,
+                    "role": new_role
+                }
+
+                # Sauvegarder dans users.yaml
                 with open("users.yaml", "w") as file:
-                    yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
-                st.success(f"Utilisateur {new_username} ajouté !")
+                    yaml.dump({
+                        "usernames": credentials["usernames"],
+                        "cookie": users_config["cookie"]
+                    }, file)
+
+                st.success(f"Utilisateur {new_username} ajouté avec succès ✅")
 
     st.markdown("### ❌ Supprimer un utilisateur")
     del_username = st.selectbox("Sélectionner utilisateur à supprimer", df_users["username"])
