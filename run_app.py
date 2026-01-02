@@ -7,7 +7,7 @@ import yaml
 import streamlit_authenticator as stauth
 from io import BytesIO
 import plotly.express as px
-from chatbot import run_chatbot
+
 
 # ------------------------
 # PAGE CONFIG
@@ -66,15 +66,10 @@ else:
 # SELECT PAGE
 # ------------------------
 if role == "admin":
-    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics", "Objectifs","Assistant IA"])
+    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics", "Objectifs"])
 else:
-    page = st.sidebar.selectbox(
-        "Menu",
-        ["Assistant IA"]
-    )
+    page = "Dashboard"
 
-if page == "Assistant IA":
-    run_chatbot()
     
 if page == "Objectifs":
     from objectifs import run_objectifs
