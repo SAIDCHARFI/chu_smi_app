@@ -104,17 +104,23 @@ if page == "User Management":
             elif new_username in credentials["usernames"]:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
-                # Hasher le mot de passe avant stockage
-                from streamlit_authenticator import Hasher
-                hasher = Hasher()
-                hashed_pw = hasher.hash_password(new_password)
-
-                # Ajouter l'utilisateur au dictionnaire
-                credentials["usernames"][new_username] = {
-                    "name": new_name,
-                    "password": hashed_pw,
-                    "role": new_role
+                # Créer un dictionnaire temporaire pour le nouvel utilisateur
+                new_user_dict = {
+                    "usernames": {
+                        new_username: {
+                            "name": new_name,
+                            "password": new_password,  # en clair pour l'instant
+                            "role": new_role
+                        }
+                    }
                 }
+
+                # Hasher les mots de passe via hash_passwords()
+                hasher = stauth.Hasher()
+                hashed_new_user = hasher.hash_passwords(new_user_dict)
+
+                # Ajouter l'utilisateur hashé au dictionnaire principal
+                credentials["usernames"][new_username] = hashed_new_user["usernames"][new_username]
 
                 # Sauvegarder dans users.yaml
                 with open("users.yaml", "w") as file:
