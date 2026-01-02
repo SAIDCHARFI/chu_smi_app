@@ -94,7 +94,10 @@ if page == "User Management":
             if new_username in credentials["usernames"]:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
-                hashed_pw = stauth.Hasher([new_password]).generate()[0]
+                #hashed_pw = stauth.Hasher([new_password]).generate()[0]
+                from streamlit_authenticator import Hasher
+                hasher = Hasher()
+                hashed_pw = hasher.hash_password(new_password)
                 credentials["usernames"][new_username] = {"name": new_name, "password": hashed_pw, "role": new_role}
                 with open("users.yaml", "w") as file:
                     yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
