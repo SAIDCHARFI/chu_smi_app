@@ -126,6 +126,24 @@ if page == "Dashboard":
         nb_erreurs = st.number_input("Nombre d’erreurs médicales", min_value=1, step=1, key="nb_erreurs")
         erreur_description = st.text_area("Décrire l’erreur médicale", key="erreur_desc")
 
+    # ------------------------
+    # Nouveaux indicateurs
+    # ------------------------
+    readmission = st.radio("Réadmission", ["Non", "Oui"], horizontal=True, key="readmission")
+    readmission_type = None
+    if readmission == "Oui":
+        readmission_type = st.radio("Cause de la réadmission", ["PEC incomplète", "Complication"], key="readmission_type")
+
+    infection_soins = st.radio("Infections liées aux soins", ["Non", "Oui"], horizontal=True, key="infection")
+    infection_description = ""
+    if infection_soins == "Oui":
+        infection_description = st.text_area("Préciser l’infection liée aux soins", key="infection_desc")
+
+    effets_graves = st.radio("Effets indésirables graves", ["Non", "Oui"], horizontal=True, key="effets")
+    effets_graves_description = ""
+    if effets_graves == "Oui":
+        effets_graves_description = st.text_area("Décrire les effets indésirables graves", key="effets_desc")
+
     st.divider()
 
     # ------------------------
