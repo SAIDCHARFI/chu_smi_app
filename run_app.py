@@ -407,6 +407,15 @@ if page == "Dashboard":
             "erreur_medicale": erreur_medicale == "Oui",
             "nb_erreurs": int(nb_erreurs) if nb_erreurs else None,
             "erreur_description": erreur_description or None,
+            # --------------------------
+            # Nouveaux indicateurs Qualité et sécurité
+            "readmission": readmission == "Oui",
+            "readmission_type": readmission_type or None,
+            "infection_soins": infection_soins == "Oui",
+            "infection_description": infection_description or None,
+            "effets_graves": effets_graves == "Oui",
+            "effets_graves_description": effets_graves_description or None,
+            # --------------------------
             "delai_admission": int(delai_admission) if delai_admission else None,
             "duree_sejour": int(duree_sejour) if duree_sejour else None,
             "cause_long_sejour": cause_long_sejour or None,
@@ -458,10 +467,10 @@ if page == "Dashboard":
             # Reset all form fields by clearing session_state
             # ------------------------
             for key in list(st.session_state.keys()):
-                # Only reset keys related to your form inputs
                 if key in [
                     "first_name", "last_name", "age", "sex", "unite", "motif", "diagnostic",
                     "incident", "nb_incidents", "incident_desc", "erreur_medicale", "nb_erreurs", "erreur_desc",
+                    "readmission", "readmission_type", "infection", "infection_desc", "effets", "effets_desc",
                     "delai_adm", "duree_sej", "cause_long_sej", "diag_etabli", "dossier",
                     "dossier_cause", "evolution", "rem_type", "echec",
                     "rechute", "types_rechute", "delai_survenue", "cause_principale_rechute", "autres_rechute",
@@ -473,7 +482,7 @@ if page == "Dashboard":
                     del st.session_state[key]
 
             # Show empty form after saving
-            st.experimental_rerun = None  # Avoid using old function
+            st.experimental_rerun = None
 
         except Exception as e:
             st.error(f"❌ Erreur lors de l'enregistrement : {e}")
