@@ -438,13 +438,6 @@ def run_HDJ():
         # ---------------------------
         if all_checked:
             st.markdown("---")
-            st.write("### Effets secondaires sélectionnés :")
-            for item in all_checked:
-                if item["detail"]:
-                    st.write(f"- {item['periode']} - {item['gravite']} - {item['effet']} : {item['detail']}")
-                else:
-                    st.write(f"- {item['periode']} - {item['gravite']} - {item['effet']}")
-
             if st.button("💾 Enregistrer la session"):
                 supabase.table("hdj_sessions").insert({
                     "medicament": selected_drug,
