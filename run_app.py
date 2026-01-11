@@ -213,7 +213,7 @@ if page == "Dashboard":
         echec_traitement = st.radio("Échec confirmé ?", ["Oui", "Non"], horizontal=True, key="echec")
 
         if echec_traitement == "Oui":
-            st.markdown("**Types d’échec retenus (cocher)**")
+            st.markdown("**Types d’échec retenus**")
             if st.checkbox("Échec clinique"):
                 types_echec.append("Clinique")
             if st.checkbox("Échec biologique"):
@@ -225,7 +225,7 @@ if page == "Dashboard":
             if st.checkbox("Échec composite (≥ 2 critères)"):
                 types_echec.append("Composite")
 
-            st.markdown("**Causes de l’échec (cocher)**")
+            st.markdown("**Causes de l’échec**")
             if st.checkbox("Mauvais diagnostic initial"):
                 causes_echec.append("Mauvais diagnostic initial")
             if st.checkbox("Retard thérapeutique"):
@@ -260,7 +260,7 @@ if page == "Dashboard":
         autres_rechute = ""
 
         if rechute == "Oui":
-            st.markdown("**Types de rechute retenus (cocher)**")
+            st.markdown("**Types de rechute retenus**")
             if st.checkbox("Rechute clinique"):
                 types_rechute.append("Clinique")
             if st.checkbox("Rechute biologique"):
@@ -272,7 +272,7 @@ if page == "Dashboard":
             if st.checkbox("Rechute composite (≥ 2 critères)"):
                 types_rechute.append("Composite")
 
-            st.markdown("**Délai de survenue (à préciser)**")
+            st.markdown("**Délai de survenue**")
             if st.checkbox("< 3 mois"):
                 delai_survenue.append("<3 mois")
             if st.checkbox("3–6 mois"):
@@ -282,7 +282,7 @@ if page == "Dashboard":
             if st.checkbox("> 12 mois"):
                 delai_survenue.append(">12 mois")
 
-            st.markdown("**Cause principale (choix)**")
+            st.markdown("**Cause principale**")
             if st.checkbox("Non-observance secondaire"):
                 cause_principale_rechute.append("Non-observance secondaire")
             if st.checkbox("Sevrage ou dégression trop rapide"):
