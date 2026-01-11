@@ -438,7 +438,7 @@ def run_HDJ():
         # ---------------------------
         if all_checked:
             st.markdown("---")
-            if st.button("💾 Enregistrer la session"):
+            if st.button("💾 Enregistrer"):
                 supabase.table("hdj_sessions").insert({
                     "medicament": selected_drug,
                     "selections": all_checked
