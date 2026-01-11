@@ -76,7 +76,7 @@ def run_objectifs():
         & (df["registration_time"].dt.date <= end_date)
     ]
 
-    if service:
+    if service and "patient_service" in df_period.columns:
         df_period = df_period[
             df_period["patient_service"].str.contains(service, case=False, na=False)
         ]
@@ -97,21 +97,22 @@ def run_objectifs():
     total = len(df_period)
 
     nb_incidents = df_period["nb_incidents"].fillna(0).sum()
-    nb_ias = (df_period["infection_soins"] == "Oui").sum()
-    nb_readm = (df_period["readmission"] == "Oui").sum()
-    nb_dossiers_ok = (df_period["dossier_complet"] == "Oui").sum()
-    nb_effets_graves = (df_period["effets_graves"] == "Oui").sum()
+    nb_ias = df_period["infection_soins"].sum() if "infection_soins" in df_period.columns else 0
+    nb_readm = df_period["readmission"].sum() if "readmission" in df_period.columns else 0
+    nb_dossiers_ok = df_period["dossier_complet"].sum()
+    nb_effets_graves = df_period["effets_graves"].sum() if "effets_graves" in df_period.columns else 0
     delai_moyen = df_period["delai_admission"].mean()
-    nb_diag_ok = (df_period["diagnostic_etabli"] == "Oui").sum()
-    nb_plaintes = (df_period["plaintes_reclamations"] == "Oui").sum()
+    nb_diag_ok = df_period["diagnostic_etabli"].sum()
+    nb_plaintes = df_period["plaintes_reclamations"].sum() if "plaintes_reclamations" in df_period.columns else 0
+    nb_echec = (df_period["evolution_patient"] == "Échec de traitement").sum()
 
     evol = df_period["evolution_patient"].value_counts()
 
     # période précédente
     total_prev = len(df_prev)
     prev_vals = {
-        "effets": (df_prev["effets_graves"] == "Oui").sum(),
-        "plaintes": (df_prev["plaintes_reclamations"] == "Oui").sum(),
+        "effets": df_prev["effets_graves"].sum() if "effets_graves" in df_prev.columns else 0,
+        "plaintes": df_prev["plaintes_reclamations"].sum() if "plaintes_reclamations" in df_prev.columns else 0,
         "remission": (df_prev["evolution_patient"] == "Rémission").sum(),
         "echec": (df_prev["evolution_patient"] == "Échec de traitement").sum(),
         "rechute": (df_prev["evolution_patient"] == "Rechute").sum(),
@@ -128,6 +129,7 @@ def run_objectifs():
         ("Traçabilité dossiers (%)", safe_pct(nb_dossiers_ok, total), "> 95 %", status_threshold(safe_pct(nb_dossiers_ok, total), 95, "gt")),
         ("Délai moyen admission (jours)", delai_moyen, "< 30", status_threshold(delai_moyen, 30, "lt")),
         ("Dossiers complets avec diagnostic (%)", safe_pct(nb_diag_ok, total), "> 90 %", status_threshold(safe_pct(nb_diag_ok, total), 90, "gt")),
+        ("Taux Échec thérapeutique (%)", safe_pct(nb_echec, total), "< 10 %", status_threshold(safe_pct(nb_echec, total), 10, "lt")),
     ]
 
     st.subheader("📌 KPI avec objectifs")
@@ -145,9 +147,9 @@ def run_objectifs():
     st.subheader("📈 KPI en tendance")
 
     trend_data = {
-        "Effets indésirables graves /1000": (
-            safe_pct(nb_effets_graves, total) * 10,
-            safe_pct(prev_vals["effets"], total_prev) * 10,
+        "Effets indésirables graves (%)": (
+            safe_pct(nb_effets_graves, total),
+            safe_pct(prev_vals["effets"], total_prev),
         ),
         "Rémission (%)": (
             safe_pct(evol.get("Rémission", 0), total),
@@ -191,6 +193,7 @@ def run_objectifs():
     # ------------------------
     output = BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_period.to_excel(writer, index=False, sheet_name="Indicateurs")
         df_trend.to_excel(writer, index=False, sheet_name="KPI_Objectifs")
 
     st.download_button(
