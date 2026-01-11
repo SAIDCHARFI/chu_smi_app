@@ -1,4 +1,12 @@
 import streamlit as st
+from supabase import create_client
+
+# ---------------------------
+# Supabase configuration
+# ---------------------------
+SUPABASE_URL = "https://XXXX.supabase.co"  # Remplace par ton URL Supabase
+SUPABASE_KEY = "TON_ANON_KEY"             # Remplace par ta clé API
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def run_HDJ():
     st.title("HDJ – Effets secondaires des traitements")
@@ -398,6 +406,7 @@ def run_HDJ():
                     st.markdown(f"**{severity} :**")
 
                     for effect in effects:
+                        # Cas cancers secondaires
                         if effect.startswith("Cancers secondaires"):
                             key_main = f"{selected_drug}_{term}_{severity}_cancers"
                             if st.checkbox("Cancers secondaires", key=key_main):
@@ -408,16 +417,37 @@ def run_HDJ():
                                 ]:
                                     key_sub = f"{selected_drug}_{term}_{severity}_{cancer}"
                                     if st.checkbox(f"↳ {cancer}", key=key_sub):
-                                        all_checked.append(
-                                            f"{term} - {severity} - Cancers secondaires : {cancer}"
-                                        )
+                                        all_checked.append({
+                                            "periode": term,
+                                            "gravite": severity,
+                                            "effet": "Cancers secondaires",
+                                            "detail": cancer
+                                        })
                         else:
                             key = f"{selected_drug}_{term}_{severity}_{effect}"
                             if st.checkbox(effect, key=key):
-                                all_checked.append(f"{term} - {severity} - {effect}")
+                                all_checked.append({
+                                    "periode": term,
+                                    "gravite": severity,
+                                    "effet": effect,
+                                    "detail": None
+                                })
 
+        # ---------------------------
+        # Affichage sélection + sauvegarde
+        # ---------------------------
         if all_checked:
             st.markdown("---")
             st.write("### Effets secondaires sélectionnés :")
-            for e in all_checked:
-                st.write(f"- {e}")
+            for item in all_checked:
+                if item["detail"]:
+                    st.write(f"- {item['periode']} - {item['gravite']} - {item['effet']} : {item['detail']}")
+                else:
+                    st.write(f"- {item['periode']} - {item['gravite']} - {item['effet']}")
+
+            if st.button("💾 Enregistrer la session"):
+                supabase.table("hdj_sessions").insert({
+                    "medicament": selected_drug,
+                    "selections": all_checked
+                }).execute()
+                st.success("✅ Session enregistrée avec tous les détails")
