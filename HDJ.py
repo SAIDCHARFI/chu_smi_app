@@ -4,8 +4,8 @@ from supabase import create_client
 # ---------------------------
 # Supabase configuration
 # ---------------------------
-SUPABASE_URL = "https://XXXX.supabase.co"  # Remplace par ton URL Supabase
-SUPABASE_KEY = "TON_ANON_KEY"             # Remplace par ta clé API
+SUPABASE_URL = st.secrets["SUPABASE"]["URL"]  # Remplace par ton URL Supabase
+SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]             # Remplace par ta clé API
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def run_HDJ():
