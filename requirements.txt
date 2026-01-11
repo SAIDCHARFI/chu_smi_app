@@ -1,0 +1,12 @@
+supabase
+streamlit
+streamlit-authenticator
+pandas
+SQLAlchemy
+pyyaml
+bcrypt
+xlsxwriter
+matplotlib
+plotly
+PyYAML
+psycopg2-binary
