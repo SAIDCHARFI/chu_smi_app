@@ -74,10 +74,15 @@ if page == "Objectifs":
     run_objectifs()
 
 
+# ------------------------
+# USER MANAGEMENT (ADMIN)
+# ------------------------
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
-    df_users = pd.DataFrame([{"username": u, "name": v["name"], "role": v.get("role", "user")}
-                             for u, v in credentials["usernames"].items()])
+    df_users = pd.DataFrame([
+        {"username": u, "name": v["name"], "role": v.get("role", "user")}
+        for u, v in credentials["usernames"].items()
+    ])
     st.dataframe(df_users, use_container_width=True)
 
     st.markdown("### ➕ Ajouter un utilisateur")
@@ -87,14 +92,21 @@ if page == "User Management":
         new_password = st.text_input("Mot de passe", type="password")
         new_role = st.selectbox("Rôle", ["user", "admin"])
         add_user = st.form_submit_button("Ajouter")
+
         if add_user:
             if new_username in credentials["usernames"]:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
+                # Hash password
                 hashed_pw = stauth.Hasher([new_password]).generate()[0]
-                credentials["usernames"][new_username] = {"name": new_name, "password": hashed_pw, "role": new_role}
+                credentials["usernames"][new_username] = {
+                    "name": new_name,
+                    "password": hashed_pw,
+                    "role": new_role
+                }
                 with open("users.yaml", "w") as file:
-                    yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
+                    yaml.dump({"usernames": credentials["usernames"],
+                               "cookie": users_config["cookie"]}, file)
                 st.success(f"Utilisateur {new_username} ajouté !")
 
     st.markdown("### ❌ Supprimer un utilisateur")
@@ -103,12 +115,12 @@ if page == "User Management":
         if del_username in credentials["usernames"]:
             del credentials["usernames"][del_username]
             with open("users.yaml", "w") as file:
-                yaml.dump({"usernames": credentials["usernames"], "cookie": users_config["cookie"]}, file)
+                yaml.dump({"usernames": credentials["usernames"],
+                           "cookie": users_config["cookie"]}, file)
             st.success(f"Utilisateur {del_username} supprimé !")
 
     st.markdown("### 📝 Journaux d'activité")
-    logs = supabase.table("activity_logs").select("*").order("timestamp", desc=True).execute().data
-    df_logs = pd.DataFrame(logs)
+    df_logs = pd.read_sql("SELECT * FROM activity_logs ORDER BY timestamp DESC", engine)
     st.dataframe(df_logs, use_container_width=True)
 
 # ------------------------
