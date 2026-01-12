@@ -87,27 +87,37 @@ if page == "User Management":
 
     st.markdown("### ➕ Ajouter un utilisateur")
     with st.form("add_user_form"):
-        new_username = st.text_input("Nom d'utilisateur")
-        new_name = st.text_input("Nom complet")
-        new_password = st.text_input("Mot de passe", type="password")
-        new_role = st.selectbox("Rôle", ["user", "admin"])
-        add_user = st.form_submit_button("Ajouter")
+    new_username = st.text_input("Nom d'utilisateur")
+    new_name = st.text_input("Nom complet")
+    new_password = st.text_input("Mot de passe", type="password")
+    new_role = st.selectbox("Rôle", ["user", "admin"])
+    add_user = st.form_submit_button("Ajouter")
 
-        if add_user:
-            if new_username in credentials["usernames"]:
-                st.warning("⚠️ Utilisateur déjà existant")
-            else:
-                # Hash password
-                hashed_pw = stauth.Hasher([new_password]).generate()[0]
-                credentials["usernames"][new_username] = {
-                    "name": new_name,
-                    "password": hashed_pw,
-                    "role": new_role
-                }
-                with open("users.yaml", "w") as file:
-                    yaml.dump({"usernames": credentials["usernames"],
-                               "cookie": users_config["cookie"]}, file)
-                st.success(f"Utilisateur {new_username} ajouté !")
+    if add_user:
+        if new_username in credentials["usernames"]:
+            st.warning("⚠️ Utilisateur déjà existant")
+        else:
+            # For old stauth: create a temporary dict with username → password
+            temp_user_dict = {new_username: {"password": new_password}}
+            # Generate hashed password
+            hashed_pw_dict = stauth.Hasher(temp_user_dict).generate()
+            hashed_pw = hashed_pw_dict[new_username]["password"]
+
+            # Add new user to credentials
+            credentials["usernames"][new_username] = {
+                "name": new_name,
+                "password": hashed_pw,
+                "role": new_role
+            }
+
+            # Save to YAML
+            with open("users.yaml", "w") as file:
+                yaml.dump({
+                    "usernames": credentials["usernames"],
+                    "cookie": users_config["cookie"]
+                }, file)
+            st.success(f"Utilisateur {new_username} ajouté !")
+
 
     st.markdown("### ❌ Supprimer un utilisateur")
     del_username = st.selectbox("Sélectionner utilisateur à supprimer", df_users["username"])
