@@ -155,6 +155,138 @@ if page == "User Management":
         st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
 
+
+
+
+if page == "Statistics":
+    st.subheader("📊 Statistiques Cliniques")
+
+    # ------------------------
+    # Fetch data
+    # ------------------------
+    records = supabase.table("indicateurs_cliniques").select("*").execute()
+    df = pd.DataFrame(records.data)
+
+    if df.empty:
+        st.info("Aucune donnée clinique disponible pour le moment.")
+        st.stop()
+
+    # ------------------------
+    # Convert date column to datetime
+    # ------------------------
+    df["registration_time"] = pd.to_datetime(df["registration_time"])
+
+    # ------------------------
+    # Interactive filters
+    # ------------------------
+    st.markdown("### Filtrer les données")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        date_min = df["registration_time"].min().date()
+        date_max = df["registration_time"].max().date()
+        date_range = st.date_input("Période", [date_min, date_max])
+
+    with col2:
+        patients = ["Tous"] + df["patient_first_name"].dropna().unique().tolist()
+        selected_patient = st.selectbox("Patient", patients)
+
+    with col3:
+        metrics_options = ["Tous", "Incidents", "Erreurs", "Réadmissions"]
+        selected_metric = st.selectbox("Métrique", metrics_options)
+
+    # ------------------------
+    # Apply filters
+    # ------------------------
+    start_date, end_date = date_range
+    mask = (df["registration_time"].dt.date >= start_date) & (df["registration_time"].dt.date <= end_date)
+
+    if selected_patient != "Tous":
+        mask &= df["patient_first_name"] == selected_patient
+
+    df_filtered = df[mask]
+
+    if df_filtered.empty:
+        st.warning("Aucune donnée pour ce filtre.")
+        st.stop()
+
+    # ------------------------
+    # Overview metrics
+    # ------------------------
+    st.markdown("### ✅ Vue d'ensemble")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Nombre de patients", len(df_filtered))
+    with col2:
+        st.metric("Incidents signalés", df_filtered["incident"].sum())
+    with col3:
+        st.metric("Erreurs médicales", df_filtered["erreur_medicale"].sum())
+    with col4:
+        st.metric("Réadmissions", df_filtered["readmission"].sum())
+
+    st.divider()
+
+    # ------------------------
+    # Pie chart: patient evolution
+    # ------------------------
+    st.markdown("### Évolution des patients")
+    evolution_counts = df_filtered["evolution_patient"].value_counts().reset_index()
+    evolution_counts.columns = ["Évolution", "Nombre"]
+    fig_evolution = px.pie(
+        evolution_counts,
+        names="Évolution",
+        values="Nombre",
+        title="Répartition par évolution des patients"
+    )
+    st.plotly_chart(fig_evolution, use_container_width=True)
+
+    # ------------------------
+    # Bar chart: incidents vs errors
+    # ------------------------
+    st.markdown("### Incidents vs Erreurs médicales")
+    incidents_df = df_filtered.groupby(["incident", "erreur_medicale"]).size().reset_index(name="Nombre")
+    fig_incidents = px.bar(
+        incidents_df,
+        x="incident",
+        y="Nombre",
+        color="erreur_medicale",
+        labels={"incident": "Incident", "erreur_medicale": "Erreur médicale"},
+        title="Nombre d'incidents par erreurs médicales"
+    )
+    st.plotly_chart(fig_incidents, use_container_width=True)
+
+    # ------------------------
+    # Histogram: duration of stay
+    # ------------------------
+    st.markdown("### Durée de séjour")
+    fig_sejour = px.histogram(
+        df_filtered,
+        x="duree_sejour",
+        nbins=20,
+        title="Distribution des durées de séjour (jours)",
+        labels={"duree_sejour": "Durée (jours)"}
+    )
+    st.plotly_chart(fig_sejour, use_container_width=True)
+
+    # ------------------------
+    # Histogram: satisfaction patient
+    # ------------------------
+    st.markdown("### Satisfaction des patients")
+    fig_satisfaction = px.histogram(
+        df_filtered,
+        x="satisfaction_patient",
+        nbins=5,
+        title="Distribution de la satisfaction patient",
+        labels={"satisfaction_patient": "Satisfaction"}
+    )
+    st.plotly_chart(fig_satisfaction, use_container_width=True)
+
+    # ------------------------
+    # Raw data table
+    # ------------------------
+    st.markdown("### Données brutes")
+    st.dataframe(df_filtered, use_container_width=True)
 # ------------------------
 # DASHBOARD
 # ------------------------
