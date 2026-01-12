@@ -120,8 +120,19 @@ if page == "User Management":
             st.success(f"Utilisateur {del_username} supprimé !")
 
     st.markdown("### 📝 Journaux d'activité")
-    df_logs = pd.read_sql("SELECT * FROM activity_logs ORDER BY timestamp DESC", engine)
+    logs = (
+    supabase
+    .table("activity_logs")
+    .select("*")
+    .order("timestamp", desc=True)
+    .execute() 
+    )
+
+    df_logs = pd.DataFrame(logs.data)
+    if df_logs.empty:
+        st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
+
 
 # ------------------------
 # DASHBOARD
