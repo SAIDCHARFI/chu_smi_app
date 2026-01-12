@@ -118,7 +118,6 @@ if page == "User Management":
                 }, file)
             st.success(f"Utilisateur {new_username} ajouté !")
 
-
     st.markdown("### ❌ Supprimer un utilisateur")
     del_username = st.selectbox("Sélectionner utilisateur à supprimer", df_users["username"])
     if st.button("Supprimer"):
@@ -140,7 +139,7 @@ if page == "User Management":
 
     df_logs = pd.DataFrame(logs.data)
     if df_logs.empty:
-        st.info("Aucun journal d'activité disponible")
+    st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
 
 
