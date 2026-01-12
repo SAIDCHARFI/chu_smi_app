@@ -139,7 +139,7 @@ if page == "User Management":
 
     df_logs = pd.DataFrame(logs.data)
     if df_logs.empty:
-    st.info("Aucun journal d'activité disponible")
+        st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
 
 
