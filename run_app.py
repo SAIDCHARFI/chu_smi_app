@@ -77,14 +77,20 @@ if page == "Objectifs":
 # ------------------------
 # USER MANAGEMENT (ADMIN)
 # ------------------------
+
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
+    
+    # Show current users
     df_users = pd.DataFrame([
         {"username": u, "name": v["name"], "role": v.get("role", "user")}
         for u, v in credentials["usernames"].items()
     ])
     st.dataframe(df_users, use_container_width=True)
 
+    # ------------------------
+    # ADD USER
+    # ------------------------
     st.markdown("### ➕ Ajouter un utilisateur")
     with st.form("add_user_form"):
         new_username = st.text_input("Nom d'utilisateur")
@@ -97,20 +103,18 @@ if page == "User Management":
             if new_username in credentials["usernames"]:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
-                # For old stauth: create a temporary dict with username → password
-                temp_user_dict = {new_username: {"password": new_password}}
-                # Generate hashed password
-                hashed_pw_dict = stauth.Hasher(temp_user_dict).generate()
-                hashed_pw = hashed_pw_dict[new_username]["password"]
-
-                # Add new user to credentials
+                # Add user with plain password temporarily
                 credentials["usernames"][new_username] = {
                     "name": new_name,
-                    "password": hashed_pw,
+                    "password": new_password,
                     "role": new_role
                 }
 
-                # Save to YAML
+                # Hash all passwords in credentials
+                hasher = stauth.Hasher()
+                credentials = hasher.hash_passwords(credentials)
+
+                # Save updated credentials to YAML
                 with open("users.yaml", "w") as file:
                     yaml.dump({
                         "usernames": credentials["usernames"],
@@ -118,30 +122,38 @@ if page == "User Management":
                     }, file)
                 st.success(f"Utilisateur {new_username} ajouté !")
 
+    # ------------------------
+    # DELETE USER
+    # ------------------------
     st.markdown("### ❌ Supprimer un utilisateur")
     del_username = st.selectbox("Sélectionner utilisateur à supprimer", df_users["username"])
     if st.button("Supprimer"):
         if del_username in credentials["usernames"]:
             del credentials["usernames"][del_username]
+            # Save updated credentials
             with open("users.yaml", "w") as file:
-                yaml.dump({"usernames": credentials["usernames"],
-                           "cookie": users_config["cookie"]}, file)
+                yaml.dump({
+                    "usernames": credentials["usernames"],
+                    "cookie": users_config["cookie"]
+                }, file)
             st.success(f"Utilisateur {del_username} supprimé !")
 
+    # ------------------------
+    # ACTIVITY LOGS
+    # ------------------------
     st.markdown("### 📝 Journaux d'activité")
     logs = (
-    supabase
-    .table("activity_logs")
-    .select("*")
-    .order("timestamp", desc=True)
-    .execute() 
+        supabase
+        .table("activity_logs")
+        .select("*")
+        .order("timestamp", desc=True)
+        .execute() 
     )
 
     df_logs = pd.DataFrame(logs.data)
     if df_logs.empty:
         st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
-
 
 # ------------------------
 # DASHBOARD
