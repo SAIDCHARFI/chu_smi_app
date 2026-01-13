@@ -32,51 +32,6 @@ cookie_name = users_config["cookie"]["name"]
 cookie_key = users_config["cookie"]["key"]
 cookie_expiry_days = users_config["cookie"]["expiry_days"]
 
-
-
-import yaml
-from streamlit_authenticator import Hasher
-
-# ------------------------
-# MIGRATION UTILISATEURS YAML → SUPABASE
-# ------------------------
-def migrate_users_yaml_to_supabase():
-    try:
-        # Charger YAML
-        with open("users.yaml") as f:
-            users_config = yaml.safe_load(f)
-
-        credentials = users_config["usernames"]
-        hasher = Hasher()
-        credentials = hasher.hash_passwords(credentials)
-
-        # Parcourir chaque utilisateur YAML
-        for username, info in credentials.items():
-            exists = supabase.table("users").select("username") \
-                        .eq("username", username).execute().data
-            if not exists:
-                supabase.table("users").insert({
-                    "username": username,
-                    "name": info["name"],
-                    "role": info.get("role", "user"),
-                    "password_hash": info["password"],  # hash
-                    "active": True
-                }).execute()
-                print(f"✅ Utilisateur ajouté : {username}")
-            else:
-                print(f"⚠️ Utilisateur déjà existant : {username}")
-
-        print("Migration YAML → Supabase terminée !")
-
-    except Exception as e:
-        print(f"Erreur migration utilisateurs : {e}")
-
-# Exécuter **une seule fois** avec un flag en session_state
-if "users_migrated" not in st.session_state:
-    migrate_users_yaml_to_supabase()
-    st.session_state["users_migrated"] = True
-
-
 # ------------------------
 # AUTHENTICATOR INIT
 # ------------------------
