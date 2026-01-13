@@ -27,7 +27,7 @@ with open("users.yaml") as f:
 credentials = users_config["usernames"]
 
 # Hasher les mots de passe et insérer dans Supabase
-hasher = Hasher()
+hasher = stauth.Hasher()
 credentials = hasher.hash_passwords(credentials)
 
 for username, info in credentials.items():
