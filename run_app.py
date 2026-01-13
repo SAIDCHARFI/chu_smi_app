@@ -11,27 +11,56 @@ import plotly.express as px
 
 import json
 import os
-import requests
+from datetime import datetime
+import streamlit as st
 
-LOCAL_FILE = "local_cache.json"
+LOCAL_DATA_FILE = "local_data.json"
 
 def save_locally(record):
-    if os.path.exists(LOCAL_FILE):
-        with open(LOCAL_FILE, "r") as f:
-            cache = json.load(f)
-    else:
-        cache = []
-    cache.append(record)
-    with open(LOCAL_FILE, "w") as f:
-        json.dump(cache, f, indent=2)
+    """Save the record locally in case of offline."""
+    data = []
+    if os.path.exists(LOCAL_DATA_FILE):
+        with open(LOCAL_DATA_FILE, "r") as f:
+            try:
+                data = json.load(f)
+            except:
+                data = []
+    data.append(record)
+    with open(LOCAL_DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+    st.warning("⚠️ Hors ligne, données stockées localement")
 
-def is_online():
-    try:
-            # Try fetching 1 record from indicateurs_cliniques
-        r = supabase.table("indicateurs_cliniques").select("registration_time").limit(1).execute()
-        return r.status_code == 200  # returns True if request succeeded
-    except:
-        return False
+def sync_local_to_supabase():
+    """Send any locally stored data to Supabase."""
+    if os.path.exists(LOCAL_DATA_FILE):
+        with open(LOCAL_DATA_FILE, "r") as f:
+            try:
+                local_records = json.load(f)
+            except:
+                local_records = []
+        if not local_records:
+            st.info("No local data to sync.")
+            return
+        sent_indices = []
+        for i, record in enumerate(local_records):
+            try:
+                supabase.table("indicateurs_cliniques").insert(record).execute()
+                sent_indices.append(i)
+                st.success(f"✅ Sent to Supabase: {record.get('patient_first_name', 'unknown')}")
+            except Exception as e:
+                st.error(f"❌ Failed to send record {i} to Supabase: {e}")
+        # Remove sent records
+        if sent_indices:
+            remaining = [r for j, r in enumerate(local_records) if j not in sent_indices]
+            with open(LOCAL_DATA_FILE, "w") as f:
+                json.dump(remaining, f, indent=2)
+            if remaining:
+                st.warning(f"⚠️ {len(remaining)} record(s) still offline")
+            else:
+                st.success("✅ All local data synced to Supabase")
+
+# Call sync function at app start
+sync_local_to_supabase()
 
 # ------------------------
 # PAGE CONFIG
@@ -789,8 +818,8 @@ if page == "Dashboard":
         # ------------------------
         # Try sending to Supabase if online
         # ------------------------
-        if is_online():
-            try:
+        
+        try:
                 # Insert main record
                 supabase.table("indicateurs_cliniques").insert(record).execute()
                 supabase.table("activity_logs").insert({
@@ -810,12 +839,10 @@ if page == "Dashboard":
                     os.remove(LOCAL_FILE)
                     st.info("📤 Données locales synchronisées automatiquement")
 
-            except Exception as e:
+        except Exception as e:
                 st.warning("⚠️ Connexion perdue, données stockées localement")
                 save_locally(record)
-        else:
-            st.warning("⚠️ Hors ligne, données stockées localement")
-            save_locally(record)
+        
 
 
 
