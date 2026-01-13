@@ -76,6 +76,7 @@ if "users_migrated" not in st.session_state:
     migrate_users_yaml_to_supabase()
     st.session_state["users_migrated"] = True
 
+
 # ------------------------
 # AUTHENTICATOR INIT
 # ------------------------
