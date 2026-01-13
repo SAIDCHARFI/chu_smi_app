@@ -20,6 +20,29 @@ SUPABASE_URL = st.secrets["SUPABASE"]["URL"]
 SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+###########################
+with open("users.yaml") as f:
+    users_config = yaml.safe_load(f)
+
+credentials = users_config["usernames"]
+
+# Hasher les mots de passe et insérer dans Supabase
+hasher = Hasher()
+credentials = hasher.hash_passwords(credentials)
+
+for username, info in credentials.items():
+    # Vérifier si l'utilisateur existe déjà
+    exists = supabase.table("users").select("username").eq("username", username).execute().data
+    if not exists:
+        supabase.table("users").insert({
+            "username": username,
+            "name": info["name"],
+            "role": info.get("role","user"),
+            "password_hash": info["password"],  # hash
+            "active": True
+        }).execute()
+###################
+
 # ------------------------
 # LOAD USERS FROM YAML
 # ------------------------
