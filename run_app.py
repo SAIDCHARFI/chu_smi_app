@@ -118,7 +118,7 @@ if page == "User Management":
                     # 1️⃣ Ajouter mot de passe en clair dans credentials
                     credentials["usernames"][new_username] = {
                         "name": new_name,
-                        "password": new_password,  # CLAIR (temporaire)
+                        "password_hash": new_password,  # CLAIR (temporaire)
                         "role": new_role
                     }
 
@@ -131,7 +131,7 @@ if page == "User Management":
                         "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "password": credentials["usernames"][new_username]["password"],
+                        "password_hash": credentials["usernames"][new_username]["password_hash"],
                         "active": True
                     }).execute()
 
