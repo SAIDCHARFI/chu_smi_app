@@ -117,25 +117,27 @@ if page == "User Management":
                 else:
                     # 1️⃣ Ajouter mot de passe en clair dans credentials
                     credentials["usernames"][new_username] = {
-                        "name": new_name,
-                        "password_hash": new_password,  # CLAIR (temporaire)
-                        "role": new_role
+                    "name": new_name,
+                    "password": new_password,  # clair temporaire pour hash
+                    "role": new_role
                     }
 
-                    # 2️⃣ HASH GLOBAL (OBLIGATOIRE)
+                    # 2️⃣ Hasher tous les mots de passe
                     hasher = stauth.Hasher()
                     credentials = hasher.hash_passwords(credentials)
 
-                    # 3️⃣ Sauvegarder UNIQUEMENT le nouvel utilisateur en DB
+                    # 3️⃣ Mettre à jour l'authenticator avec le nouveau credentials
+                    st.session_state["authenticator"].credentials = credentials
+
+                    # 4️⃣ Insérer dans Supabase (colonne password_hash)
                     supabase.table("users").insert({
                         "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "password_hash": credentials["usernames"][new_username]["password_hash"],
+                        "password_hash": credentials["usernames"][new_username]["password"],  # hash généré
                         "active": True
                     }).execute()
 
-                    st.success(f"Utilisateur {new_username} ajouté !")
 
     # ------------------------
     # DELETE USER (SUPABASE)
