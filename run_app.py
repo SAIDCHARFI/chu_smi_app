@@ -92,51 +92,86 @@ if page == "User Management":
     # ADD USER
     # ------------------------
     st.markdown("### ➕ Ajouter un utilisateur")
-    with st.form("add_user_form"):
-        new_username = st.text_input("Nom d'utilisateur")
-        new_name = st.text_input("Nom complet")
-        new_password = st.text_input("Mot de passe", type="password")
-        new_role = st.selectbox("Rôle", ["user", "admin"])
-        add_user = st.form_submit_button("Ajouter")
+with st.form("add_user_form"):
+    new_username = st.text_input("Nom d'utilisateur")
+    new_name = st.text_input("Nom complet")
+    new_password = st.text_input("Mot de passe", type="password")
+    new_role = st.selectbox("Rôle", ["user", "admin"])
+    add_user = st.form_submit_button("Ajouter")
 
-        if add_user:
-            if new_username in credentials["usernames"]:
+    if add_user:
+        if not new_username or not new_password:
+            st.warning("Nom d'utilisateur et mot de passe requis")
+        else:
+            # Vérifier si l'utilisateur existe déjà
+            exists = (
+                supabase.table("users")
+                .select("username")
+                .eq("username", new_username)
+                .execute()
+                .data
+            )
+
+            if exists:
                 st.warning("⚠️ Utilisateur déjà existant")
             else:
-                # Add user with plain password temporarily
+                # 1️⃣ Ajouter mot de passe en clair dans credentials
                 credentials["usernames"][new_username] = {
                     "name": new_name,
-                    "password": new_password,
+                    "password": new_password,  # CLAIR (temporaire)
                     "role": new_role
                 }
 
-                # Hash all passwords in credentials
+                # 2️⃣ HASH GLOBAL (OBLIGATOIRE)
                 hasher = stauth.Hasher()
                 credentials = hasher.hash_passwords(credentials)
 
-                # Save updated credentials to YAML
-                with open("users.yaml", "w") as file:
-                    yaml.dump({
-                        "usernames": credentials["usernames"],
-                        "cookie": users_config["cookie"]
-                    }, file)
+                # 3️⃣ Sauvegarder UNIQUEMENT le nouvel utilisateur en DB
+                supabase.table("users").insert({
+                    "username": new_username,
+                    "name": new_name,
+                    "role": new_role,
+                    "password": credentials["usernames"][new_username]["password"],
+                    "active": True
+                }).execute()
+
                 st.success(f"Utilisateur {new_username} ajouté !")
 
-    # ------------------------
-    # DELETE USER
-    # ------------------------
-    st.markdown("### ❌ Supprimer un utilisateur")
-    del_username = st.selectbox("Sélectionner utilisateur à supprimer", df_users["username"])
-    if st.button("Supprimer"):
-        if del_username in credentials["usernames"]:
-            del credentials["usernames"][del_username]
-            # Save updated credentials
-            with open("users.yaml", "w") as file:
-                yaml.dump({
-                    "usernames": credentials["usernames"],
-                    "cookie": users_config["cookie"]
-                }, file)
-            st.success(f"Utilisateur {del_username} supprimé !")
+# ------------------------
+# DELETE USER (SUPABASE)
+# ------------------------
+st.markdown("### ❌ Supprimer un utilisateur")
+
+# Charger les utilisateurs actifs
+users_db = (
+    supabase.table("users")
+    .select("username, role")
+    .eq("active", True)
+    .execute()
+    .data
+)
+
+usernames = [u["username"] for u in users_db]
+del_username = st.selectbox("Sélectionner utilisateur à supprimer", usernames)
+
+if st.button("Supprimer"):
+    if del_username == username:
+        st.error("❌ Impossible de supprimer votre propre compte")
+    else:
+        role_to_delete = next(
+            u["role"] for u in users_db if u["username"] == del_username
+        )
+
+        if role_to_delete == "admin":
+            st.error("❌ Impossible de supprimer un administrateur")
+        else:
+            # Désactivation (pas de DELETE physique)
+            supabase.table("users") \
+                .update({"active": False}) \
+                .eq("username", del_username) \
+                .execute()
+
+            st.success(f"Utilisateur {del_username} désactivé")
 
     # ------------------------
     # ACTIVITY LOGS
@@ -154,8 +189,6 @@ if page == "User Management":
     if df_logs.empty:
         st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
-
-
 
 
 if page == "Statistics":
