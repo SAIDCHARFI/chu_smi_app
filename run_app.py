@@ -22,15 +22,25 @@ SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ------------------------
-# LOAD USERS FROM YAML
+# LOAD USERS FROM SUPABASE
 # ------------------------
-with open("users.yaml") as file:
-    users_config = yaml.safe_load(file)
+users_db = supabase.table("users").select("*").execute().data
 
-credentials = {"usernames": users_config["usernames"]}
-cookie_name = users_config["cookie"]["name"]
-cookie_key = users_config["cookie"]["key"]
-cookie_expiry_days = users_config["cookie"]["expiry_days"]
+# Convertir en dictionnaire pour Streamlit Authenticator
+credentials = {"usernames": {}}
+for u in users_db:
+    if u.get("active"):
+        credentials["usernames"][u["username"]] = {
+            "name": u["name"],
+            "password": u["password_hash"],  # mot de passe hashé déjà
+            "role": u.get("role", "user")
+        }
+
+# Cookies
+cookie_name = "clinical_auth"
+cookie_key = "super_secret_key_123"
+cookie_expiry_days = 1
+
 
 # ------------------------
 # AUTHENTICATOR INIT
