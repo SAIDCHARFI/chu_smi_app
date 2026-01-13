@@ -678,17 +678,35 @@ if page == "Dashboard":
 # ------------------------
     st.subheader("🏥 Innovation et Humanisation")
     telemedecine = st.radio("Patient ayant accès à la télémedecine ou suivi à distance ?", ["Oui", "Non"], horizontal=True, key="telemed")
-
     st.divider()
 
 # ------------------------
 # ENREGISTRER
 # ------------------------
-    # ------------------------
-# ENREGISTRER
-# ------------------------
+    import json
+    import os
+    import requests
+
+    LOCAL_FILE = "local_cache.json"
+
+    def save_locally(record):
+        if os.path.exists(LOCAL_FILE):
+            with open(LOCAL_FILE, "r") as f:
+                cache = json.load(f)
+        else:
+            cache = []
+        cache.append(record)
+        with open(LOCAL_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+
+    def is_online():
+        try:
+            response = requests.get(f"{SUPABASE_URL}/rest/v1/", timeout=3)
+            return response.status_code == 200
+        except:
+            return False
     if st.button("💾 Enregistrer"):
-        # Convert lists to comma-separated strings for text columns
+        # Convert lists to comma-separated strings
         types_echec_str = ", ".join(types_echec) if types_echec else None
         causes_echec_str = ", ".join(causes_echec) if causes_echec else None
         types_rechute_str = ", ".join(types_rechute) if types_rechute else None
@@ -723,15 +741,12 @@ if page == "Dashboard":
             "erreur_medicale": erreur_medicale == "Oui",
             "nb_erreurs": int(nb_erreurs) if nb_erreurs else None,
             "erreur_description": erreur_description or None,
-            # --------------------------
-            # Nouveaux indicateurs Qualité et sécurité
             "readmission": readmission == "Oui",
             "readmission_type": readmission_type or None,
             "infection_soins": infection_soins == "Oui",
             "infection_description": infection_description or None,
             "effets_graves": effets_graves == "Oui",
             "effets_graves_description": effets_graves_description or None,
-            # --------------------------
             "delai_admission": int(delai_admission) if delai_admission else None,
             "duree_sejour": int(duree_sejour) if duree_sejour else None,
             "cause_long_sejour": cause_long_sejour or None,
@@ -769,39 +784,36 @@ if page == "Dashboard":
             "registration_time": datetime.now().isoformat()
         }
 
-        try:
-            supabase.table("indicateurs_cliniques").insert(record).execute()
-            supabase.table("activity_logs").insert({
-                "username": username,
-                "action": f"Enregistrement patient {patient_first_name} {patient_last_name}",
-                "timestamp": datetime.now().isoformat()
-            }).execute()
+        # ------------------------
+        # Try sending to Supabase if online
+        # ------------------------
+        if is_online():
+            try:
+                # Insert main record
+                supabase.table("indicateurs_cliniques").insert(record).execute()
+                supabase.table("activity_logs").insert({
+                    "username": username,
+                    "action": f"Enregistrement patient {patient_first_name} {patient_last_name}",
+                    "timestamp": datetime.now().isoformat()
+                }).execute()
 
-            st.success(f"✅ Données enregistrées pour {patient_first_name} {patient_last_name}")
+                st.success(f"✅ Données envoyées pour {patient_first_name} {patient_last_name}")
 
-            # ------------------------
-            # Reset all form fields by clearing session_state
-            # ------------------------
-            for key in list(st.session_state.keys()):
-                if key in [
-                    "first_name", "last_name", "age", "sex", "unite", "motif", "diagnostic",
-                    "incident", "nb_incidents", "incident_desc", "erreur_medicale", "nb_erreurs", "erreur_desc",
-                    "readmission", "readmission_type", "infection", "infection_desc", "effets", "effets_desc",
-                    "delai_adm", "duree_sej", "cause_long_sej", "diag_etabli", "dossier",
-                    "dossier_cause", "evolution", "rem_type", "echec",
-                    "rechute", "types_rechute", "delai_survenue", "cause_principale_rechute", "autres_rechute",
-                    "pert_bio", "bio_redond", "bio_nonpert", "pert_imag", "satisf",
-                    "plaintes", "plaintes_desc", "obs_comp_80", "obs_indication", "obs_effets",
-                    "obs_accord", "obs_refus", "obs_crainte", "obs_dispo", "obs_cout",
-                    "obs_schema", "obs_barriere", "telemed"
-                ]:
-                    del st.session_state[key]
+                # Sync any cached records
+                if os.path.exists(LOCAL_FILE):
+                    with open(LOCAL_FILE, "r") as f:
+                        cached_records = json.load(f)
+                    for r in cached_records:
+                        supabase.table("indicateurs_cliniques").insert(r).execute()
+                    os.remove(LOCAL_FILE)
+                    st.info("📤 Données locales synchronisées automatiquement")
 
-            # Show empty form after saving
-            st.experimental_rerun = None
-
-        except Exception as e:
-            st.error(f"❌ Erreur lors de l'enregistrement : {e}")
+            except Exception as e:
+                st.warning("⚠️ Connexion perdue, données stockées localement")
+                save_locally(record)
+        else:
+            st.warning("⚠️ Hors ligne, données stockées localement")
+            save_locally(record)
 
 
 
