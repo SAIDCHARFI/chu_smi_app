@@ -9,58 +9,52 @@ from io import BytesIO
 import plotly.express as px
 
 
-import json
 import os
-from datetime import datetime
-import streamlit as st
+import json
 
-LOCAL_DATA_FILE = "local_data.json"
+LOCAL_FILE = "local_records.json"
 
 def save_locally(record):
-    """Save the record locally in case of offline."""
-    data = []
-    if os.path.exists(LOCAL_DATA_FILE):
-        with open(LOCAL_DATA_FILE, "r") as f:
-            try:
-                data = json.load(f)
-            except:
-                data = []
+    """Save record locally when offline."""
+    if os.path.exists(LOCAL_FILE):
+        with open(LOCAL_FILE, "r") as f:
+            data = json.load(f)
+    else:
+        data = []
     data.append(record)
-    with open(LOCAL_DATA_FILE, "w") as f:
+    with open(LOCAL_FILE, "w") as f:
         json.dump(data, f, indent=2)
-    st.warning("⚠️ Hors ligne, données stockées localement")
+    st.warning("⚠️ Connexion perdue, données stockées localement")
 
 def sync_local_to_supabase():
-    """Send any locally stored data to Supabase."""
-    if os.path.exists(LOCAL_DATA_FILE):
-        with open(LOCAL_DATA_FILE, "r") as f:
-            try:
-                local_records = json.load(f)
-            except:
-                local_records = []
-        if not local_records:
-            st.info("No local data to sync.")
-            return
-        sent_indices = []
-        for i, record in enumerate(local_records):
-            try:
-                supabase.table("indicateurs_cliniques").insert(record).execute()
-                sent_indices.append(i)
-                st.success(f"✅ Sent to Supabase: {record.get('patient_first_name', 'unknown')}")
-            except Exception as e:
-                st.error(f"❌ Failed to send record {i} to Supabase: {e}")
-        # Remove sent records
-        if sent_indices:
-            remaining = [r for j, r in enumerate(local_records) if j not in sent_indices]
-            with open(LOCAL_DATA_FILE, "w") as f:
+    """Try to send locally saved records to Supabase."""
+    if not os.path.exists(LOCAL_FILE):
+        return
+    with open(LOCAL_FILE, "r") as f:
+        local_data = json.load(f)
+    sent_records = []
+    for record in local_data:
+        try:
+            supabase.table("indicateurs_cliniques").insert(record).execute()
+            supabase.table("activity_logs").insert({
+                "username": username,
+                "action": f"Enregistrement patient {record.get('patient_first_name')} {record.get('patient_last_name')}",
+                "timestamp": datetime.now().isoformat()
+            }).execute()
+            sent_records.append(record)
+        except:
+            st.warning("⚠️ Toujours hors ligne, impossible de synchroniser")
+            break
+    # Remove sent records
+    if sent_records:
+        remaining = [r for r in local_data if r not in sent_records]
+        if remaining:
+            with open(LOCAL_FILE, "w") as f:
                 json.dump(remaining, f, indent=2)
-            if remaining:
-                st.warning(f"⚠️ {len(remaining)} record(s) still offline")
-            else:
-                st.success("✅ All local data synced to Supabase")
+        else:
+            os.remove(LOCAL_FILE)
+        st.success(f"✅ {len(sent_records)} enregistrement(s) local(aux) envoyés à Supabase")
 
-# Call sync function at app start
-sync_local_to_supabase()
 
 # ------------------------
 # PAGE CONFIG
@@ -744,9 +738,9 @@ if page == "Dashboard":
         delai_survenue_str = ", ".join(delai_survenue) if delai_survenue else None
         cause_principale_rechute_str = ", ".join(cause_principale_rechute) if cause_principale_rechute else None
 
-        # Ensure booleans are real bool types
-        examens_bio_redondants = bool(examens_bio_redondants)
-        examens_bio_non_pertinents = bool(examens_bio_non_pertinents)
+        # Ensure booleans
+        examens_bio_redondants = bool(examens_bio_redond)
+        examens_bio_non_pertinents = bool(examens_bio_nonpert)
         obs_comp_80 = bool(obs_comp_80)
         obs_indication = bool(obs_indication)
         obs_effets = bool(obs_effets)
@@ -758,6 +752,7 @@ if page == "Dashboard":
         obs_schema = bool(obs_schema)
         obs_barriere = bool(obs_barriere)
 
+        # Build record
         record = {
             "patient_first_name": patient_first_name or None,
             "patient_last_name": patient_last_name or None,
@@ -815,33 +810,23 @@ if page == "Dashboard":
             "registration_time": datetime.now().isoformat()
         }
 
-        # ------------------------
-        # Try sending to Supabase if online
-        # ------------------------
-        
         try:
-                # Insert main record
-                supabase.table("indicateurs_cliniques").insert(record).execute()
-                supabase.table("activity_logs").insert({
-                    "username": username,
-                    "action": f"Enregistrement patient {patient_first_name} {patient_last_name}",
-                    "timestamp": datetime.now().isoformat()
-                }).execute()
+            # Try sending directly
+            supabase.table("indicateurs_cliniques").insert(record).execute()
+            supabase.table("activity_logs").insert({
+                "username": username,
+                "action": f"Enregistrement patient {patient_first_name} {patient_last_name}",
+                "timestamp": datetime.now().isoformat()
+            }).execute()
 
-                st.success(f"✅ Données envoyées pour {patient_first_name} {patient_last_name}")
+            st.success(f"✅ Données envoyées pour {patient_first_name} {patient_last_name}")
 
-                # Sync any cached records
-                if os.path.exists(LOCAL_FILE):
-                    with open(LOCAL_FILE, "r") as f:
-                        cached_records = json.load(f)
-                    for r in cached_records:
-                        supabase.table("indicateurs_cliniques").insert(r).execute()
-                    os.remove(LOCAL_FILE)
-                    st.info("📤 Données locales synchronisées automatiquement")
+            # Sync any cached records
+            sync_local_to_supabase()
 
-        except Exception as e:
-                st.warning("⚠️ Connexion perdue, données stockées localement")
-                save_locally(record)
+        except Exception:
+            # Save locally if offline
+            save_locally(record)
         
 
 
