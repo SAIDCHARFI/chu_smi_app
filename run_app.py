@@ -205,6 +205,44 @@ if page == "User Management":
                     st.success(f"Utilisateur {del_username} désactivé")
 
     # ------------------------
+    # ------------------------
+    # RÉINITIALISER MOT DE PASSE
+    # ------------------------
+    st.markdown("### 🔑 Réinitialiser le mot de passe d'un utilisateur")
+    reset_username = st.selectbox(
+        "Sélectionner utilisateur", 
+        [u["username"] for u in users_db if u["active"]], 
+        key="reset_user"
+    )
+    new_password_reset = st.text_input("Nouveau mot de passe", type="password", key="reset_password")
+    reset_btn = st.button("Réinitialiser le mot de passe")
+
+    if reset_btn:
+        if not new_password_reset:
+            st.warning("Veuillez saisir un nouveau mot de passe")
+        else:
+            # Hash du nouveau mot de passe
+            temp_credentials = {
+                "usernames": {
+                    reset_username: {"password": new_password_reset}
+                }
+            }
+            hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][reset_username]["password"]
+
+            # Mettre à jour dans Supabase
+            supabase.table("users").update({
+                "password_hash": hashed_password
+            }).eq("username", reset_username).execute()
+
+            # Mettre à jour dans credentials local
+            if reset_username in credentials["usernames"]:
+                credentials["usernames"][reset_username]["password"] = new_password_reset
+                hasher = stauth.Hasher()
+                credentials = hasher.hash_passwords(credentials)
+                st.session_state["authenticator"].credentials = credentials
+
+            st.success(f"Mot de passe de {reset_username} réinitialisé !")
+
     # ACTIVITY LOGS
     # ------------------------
     st.markdown("### 📝 Journaux d'activité")
