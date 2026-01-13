@@ -8,6 +8,7 @@ import streamlit_authenticator as stauth
 from io import BytesIO
 import plotly.express as px
 
+
 # ------------------------
 # PAGE CONFIG
 # ------------------------
@@ -20,29 +21,6 @@ SUPABASE_URL = st.secrets["SUPABASE"]["URL"]
 SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-###########################
-with open("users.yaml") as f:
-    users_config = yaml.safe_load(f)
-
-credentials = users_config["usernames"]
-
-# Hasher les mots de passe et insérer dans Supabase
-hasher = stauth.Hasher()
-credentials = hasher.hash_passwords(credentials)
-
-for username, info in credentials.items():
-    # Vérifier si l'utilisateur existe déjà
-    exists = supabase.table("users").select("username").eq("username", username).execute().data
-    if not exists:
-        supabase.table("users").insert({
-            "username": username,
-            "name": info["name"],
-            "role": info.get("role","user"),
-            "password_hash": info["password"],  # hash
-            "active": True
-        }).execute()
-###################
-
 # ------------------------
 # LOAD USERS FROM YAML
 # ------------------------
@@ -53,6 +31,50 @@ credentials = {"usernames": users_config["usernames"]}
 cookie_name = users_config["cookie"]["name"]
 cookie_key = users_config["cookie"]["key"]
 cookie_expiry_days = users_config["cookie"]["expiry_days"]
+
+
+
+import yaml
+from streamlit_authenticator import Hasher
+
+# ------------------------
+# MIGRATION UTILISATEURS YAML → SUPABASE
+# ------------------------
+def migrate_users_yaml_to_supabase():
+    try:
+        # Charger YAML
+        with open("users.yaml") as f:
+            users_config = yaml.safe_load(f)
+
+        credentials = users_config["usernames"]
+        hasher = Hasher()
+        credentials = hasher.hash_passwords(credentials)
+
+        # Parcourir chaque utilisateur YAML
+        for username, info in credentials.items():
+            exists = supabase.table("users").select("username") \
+                        .eq("username", username).execute().data
+            if not exists:
+                supabase.table("users").insert({
+                    "username": username,
+                    "name": info["name"],
+                    "role": info.get("role", "user"),
+                    "password_hash": info["password"],  # hash
+                    "active": True
+                }).execute()
+                print(f"✅ Utilisateur ajouté : {username}")
+            else:
+                print(f"⚠️ Utilisateur déjà existant : {username}")
+
+        print("Migration YAML → Supabase terminée !")
+
+    except Exception as e:
+        print(f"Erreur migration utilisateurs : {e}")
+
+# Exécuter **une seule fois** avec un flag en session_state
+if "users_migrated" not in st.session_state:
+    migrate_users_yaml_to_supabase()
+    st.session_state["users_migrated"] = True
 
 # ------------------------
 # AUTHENTICATOR INIT
