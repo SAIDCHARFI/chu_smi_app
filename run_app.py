@@ -9,6 +9,30 @@ from io import BytesIO
 import plotly.express as px
 
 
+import json
+import os
+import requests
+
+LOCAL_FILE = "local_cache.json"
+
+def save_locally(record):
+    if os.path.exists(LOCAL_FILE):
+        with open(LOCAL_FILE, "r") as f:
+            cache = json.load(f)
+    else:
+        cache = []
+    cache.append(record)
+    with open(LOCAL_FILE, "w") as f:
+        json.dump(cache, f, indent=2)
+
+def is_online():
+    try:
+            # Try fetching 1 record from indicateurs_cliniques
+        r = supabase.table("indicateurs_cliniques").select("registration_time").limit(1).execute()
+        return r.status_code == 200  # returns True if request succeeded
+    except:
+        return False
+
 # ------------------------
 # PAGE CONFIG
 # ------------------------
@@ -683,28 +707,6 @@ if page == "Dashboard":
 # ------------------------
 # ENREGISTRER
 # ------------------------
-    import json
-    import os
-    import requests
-
-    LOCAL_FILE = "local_cache.json"
-
-    def save_locally(record):
-        if os.path.exists(LOCAL_FILE):
-            with open(LOCAL_FILE, "r") as f:
-                cache = json.load(f)
-        else:
-            cache = []
-        cache.append(record)
-        with open(LOCAL_FILE, "w") as f:
-            json.dump(cache, f, indent=2)
-
-    def is_online():
-        try:
-            response = requests.get(f"{SUPABASE_URL}/rest/v1/", timeout=3)
-            return response.status_code == 200
-        except:
-            return False
     if st.button("💾 Enregistrer"):
         # Convert lists to comma-separated strings
         types_echec_str = ", ".join(types_echec) if types_echec else None
