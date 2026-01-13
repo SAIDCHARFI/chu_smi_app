@@ -114,40 +114,71 @@ if page == "User Management":
             if not new_username or not new_password:
                 st.warning("Nom d'utilisateur et mot de passe requis")
             else:
-                # Vérifier si l'utilisateur existe déjà
-                exists = (
+                # Vérifier si l'utilisateur actif existe déjà
+                exists_active = (
                     supabase.table("users")
                     .select("username")
                     .eq("username", new_username)
+                    .eq("active", True)
                     .execute()
                     .data
                 )
 
-                if exists:
-                    st.warning("⚠️ Utilisateur déjà existant")
-                else:
-                    # 1️⃣ Ajouter mot de passe en clair dans credentials
-                    credentials["usernames"][new_username] = {
-                    "name": new_name,
-                    "password": new_password,  # clair temporaire pour hash
-                    "role": new_role
-                    }
+                # Vérifier si l'utilisateur désactivé existe
+                exists_inactive = (
+                    supabase.table("users")
+                    .select("username")
+                    .eq("username", new_username)
+                    .eq("active", False)
+                    .execute()
+                    .data
+                )
 
-                    # 2️⃣ Hasher tous les mots de passe
+                if exists_active:
+                    st.warning("⚠️ Utilisateur déjà existant")
+                elif exists_inactive:
+                    # Réactiver l'utilisateur désactivé
+                    supabase.table("users").update({
+                        "active": True,
+                        "name": new_name,
+                        "role": new_role,
+                        "password_hash": stauth.Hasher([new_password]).generate()[0]  # hash du nouveau mdp
+                    }).eq("username", new_username).execute()
+
+                    # Mettre à jour credentials localement
+                    credentials["usernames"][new_username] = {
+                        "name": new_name,
+                        "password": new_password,
+                        "role": new_role
+                    }
                     hasher = stauth.Hasher()
                     credentials = hasher.hash_passwords(credentials)
-
-                    # 3️⃣ Mettre à jour l'authenticator avec le nouveau credentials
                     st.session_state["authenticator"].credentials = credentials
 
-                    # 4️⃣ Insérer dans Supabase (colonne password_hash)
+                    st.success(f"Utilisateur {new_username} réactivé !")
+                else:
+                    # Ajouter nouvel utilisateur
+                    credentials["usernames"][new_username] = {
+                        "name": new_name,
+                        "password": new_password,  # clair temporaire
+                        "role": new_role
+                    }
+
+                    # Hasher tous les mots de passe
+                    hasher = stauth.Hasher()
+                    credentials = hasher.hash_passwords(credentials)
+                    st.session_state["authenticator"].credentials = credentials
+
+                    # Insérer dans Supabase
                     supabase.table("users").insert({
                         "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "password_hash": credentials["usernames"][new_username]["password"],  # hash généré
+                        "password_hash": credentials["usernames"][new_username]["password"],
                         "active": True
                     }).execute()
+
+                    st.success(f"Utilisateur {new_username} ajouté !")
 
 
     # ------------------------
