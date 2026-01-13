@@ -155,8 +155,7 @@ if page == "User Management":
         users_db = supabase.table("users").select("*").execute().data
     else:
         users_db = []
-
-    st.warning("⚠️ Supabase indisponible (mode dégradé)")
+        st.warning("⚠️ Supabase indisponible (mode dégradé)")
     if not users_db:
         st.info("Aucun utilisateur disponible.")
     else:
