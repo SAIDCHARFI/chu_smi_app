@@ -7,8 +7,6 @@ import yaml
 import streamlit_authenticator as stauth
 from io import BytesIO
 import plotly.express as px
-
-
 import os
 import json
 
@@ -71,7 +69,10 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ------------------------
 # LOAD USERS FROM SUPABASE
 # ------------------------
-users_db = supabase.table("users").select("*").execute().data
+if SUPABASE_ONLINE:
+    users_db = supabase.table("users").select("*").execute().data
+else:
+    users_db = []
 
 # Convertir en dictionnaire pour Streamlit Authenticator
 credentials = {"usernames": {}}
@@ -101,6 +102,16 @@ if "authenticator" not in st.session_state:
         prehashed=True
     )
 authenticator = st.session_state["authenticator"]
+
+
+SUPABASE_ONLINE = True
+
+try:
+    supabase.table("users").select("id").limit(1).execute()
+except Exception:
+    SUPABASE_ONLINE = False
+    st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
+
 
 # ------------------------
 # LOGIN
@@ -140,7 +151,12 @@ if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
     
     # Charger tous les utilisateurs (actifs et inactifs)
-    users_db = supabase.table("users").select("*").execute().data
+    if SUPABASE_ONLINE:
+        users_db = supabase.table("users").select("*").execute().data
+    else:
+        users_db = []
+        
+    st.warning("⚠️ Supabase indisponible (mode dégradé)")
     if not users_db:
         st.info("Aucun utilisateur disponible.")
     else:
@@ -293,15 +309,19 @@ if page == "User Management":
     # ACTIVITY LOGS
     # ------------------------
     st.markdown("### 📝 Journaux d'activité")
-    logs = (
-        supabase
-        .table("activity_logs")
-        .select("*")
-        .order("timestamp", desc=True)
-        .execute() 
-    )
+    if SUPABASE_ONLINE:
+        logs = (
+            supabase
+            .table("activity_logs")
+            .select("*")
+            .order("timestamp", desc=True)
+            .execute()
+        )
+        df_logs = pd.DataFrame(logs.data)
+    else:
+        st.info("📝 Journaux indisponibles hors ligne")
+        df_logs = pd.DataFrame()
 
-    df_logs = pd.DataFrame(logs.data)
     if df_logs.empty:
         st.info("Aucun journal d'activité disponible")
     st.dataframe(df_logs, use_container_width=True)
@@ -313,6 +333,9 @@ if page == "Statistics":
     # ------------------------
     # Fetch data
     # ------------------------
+    if not SUPABASE_ONLINE:
+        st.warning("📊 Statistiques indisponibles hors ligne")
+        st.stop()
     records = supabase.table("indicateurs_cliniques").select("*").execute()
     df = pd.DataFrame(records.data)
 
