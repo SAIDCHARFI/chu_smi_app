@@ -12,6 +12,7 @@ import json
 
 LOCAL_FILE = "local_records.json"
 
+SUPABASE_ONLINE = True
 def save_locally(record):
     """Save record locally when offline."""
     if os.path.exists(LOCAL_FILE):
@@ -69,6 +70,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ------------------------
 # LOAD USERS FROM SUPABASE
 # ------------------------
+
 if SUPABASE_ONLINE:
     users_db = supabase.table("users").select("*").execute().data
 else:
@@ -103,8 +105,6 @@ if "authenticator" not in st.session_state:
     )
 authenticator = st.session_state["authenticator"]
 
-
-SUPABASE_ONLINE = True
 
 try:
     supabase.table("users").select("id").limit(1).execute()
@@ -155,7 +155,7 @@ if page == "User Management":
         users_db = supabase.table("users").select("*").execute().data
     else:
         users_db = []
-        
+
     st.warning("⚠️ Supabase indisponible (mode dégradé)")
     if not users_db:
         st.info("Aucun utilisateur disponible.")
