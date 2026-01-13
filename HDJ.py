@@ -215,7 +215,7 @@ def run_HDJ():
             }
         },
 
-        "Infliximab": {
+        "INFLIXIMAB": {
             "COURT TERME (pendant la perfusion → 48 h)": {
                 "Mineurs": [
                     "Céphalées, fatigue",
