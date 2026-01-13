@@ -92,58 +92,85 @@ if page == "Objectifs":
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
     
-    # Show current users
-    df_users = pd.DataFrame([
-        {"username": u, "name": v["name"], "role": v.get("role", "user")}
-        for u, v in credentials["usernames"].items()
-    ])
-    st.dataframe(df_users, use_container_width=True)
+    # Charger tous les utilisateurs (actifs et inactifs)
+    users_db = supabase.table("users").select("*").execute().data
+    if not users_db:
+        st.info("Aucun utilisateur disponible.")
+    else:
+        st.dataframe(pd.DataFrame(users_db), use_container_width=True)
 
     # ------------------------
-    # ADD USER
+    # AJOUT / RÉACTIVATION UTILISATEUR
     # ------------------------
-    st.markdown("### ➕ Ajouter un utilisateur")
+    st.markdown("### ➕ Ajouter ou réactiver un utilisateur")
     with st.form("add_user_form"):
         new_username = st.text_input("Nom d'utilisateur")
         new_name = st.text_input("Nom complet")
         new_password = st.text_input("Mot de passe", type="password")
         new_role = st.selectbox("Rôle", ["user", "admin"])
-        add_user = st.form_submit_button("Ajouter")
+        add_user = st.form_submit_button("Ajouter / Réactiver")
 
         if add_user:
             if not new_username or not new_password:
                 st.warning("Nom d'utilisateur et mot de passe requis")
             else:
-                # Vérifier si l'utilisateur actif existe déjà
-                exists_active = (
-                    supabase.table("users")
-                    .select("username")
-                    .eq("username", new_username)
-                    .eq("active", True)
-                    .execute()
-                    .data
-                )
+                # Vérifier si l'utilisateur existe déjà
+                exists = next((u for u in users_db if u["username"] == new_username), None)
 
-                # Vérifier si l'utilisateur désactivé existe
-                exists_inactive = (
-                    supabase.table("users")
-                    .select("username")
-                    .eq("username", new_username)
-                    .eq("active", False)
-                    .execute()
-                    .data
-                )
+                if exists:
+                    if exists["active"]:
+                        st.warning("⚠️ Utilisateur déjà existant et actif")
+                    else:
+                        # Réactivation d'un utilisateur désactivé
+                        temp_credentials = {
+                            "usernames": {
+                                new_username: {
+                                    "name": new_name,
+                                    "password": new_password,
+                                    "role": new_role
+                                }
+                            }
+                        }
+                        hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][new_username]["password"]
 
-                if exists_active:
-                    st.warning("⚠️ Utilisateur déjà existant")
-                elif exists_inactive:
-                    # Réactiver l'utilisateur désactivé
-                    supabase.table("users").update({
-                        "active": True,
+                        supabase.table("users").update({
+                            "active": True,
+                            "name": new_name,
+                            "role": new_role,
+                            "password_hash": hashed_password
+                        }).eq("username", new_username).execute()
+
+                        # Mettre à jour credentials localement
+                        credentials["usernames"][new_username] = {
+                            "name": new_name,
+                            "password": new_password,
+                            "role": new_role
+                        }
+                        hasher = stauth.Hasher()
+                        credentials = hasher.hash_passwords(credentials)
+                        st.session_state["authenticator"].credentials = credentials
+
+                        st.success(f"Utilisateur {new_username} réactivé et mot de passe mis à jour !")
+                else:
+                    # Nouvel utilisateur → hash et insert
+                    temp_credentials = {
+                        "usernames": {
+                            new_username: {
+                                "name": new_name,
+                                "password": new_password,
+                                "role": new_role
+                            }
+                        }
+                    }
+                    hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][new_username]["password"]
+
+                    supabase.table("users").insert({
+                        "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "password_hash": stauth.Hasher([new_password]).generate()[0]  # hash du nouveau mdp
-                    }).eq("username", new_username).execute()
+                        "password_hash": hashed_password,
+                        "active": True
+                    }).execute()
 
                     # Mettre à jour credentials localement
                     credentials["usernames"][new_username] = {
@@ -155,67 +182,27 @@ if page == "User Management":
                     credentials = hasher.hash_passwords(credentials)
                     st.session_state["authenticator"].credentials = credentials
 
-                    st.success(f"Utilisateur {new_username} réactivé !")
-                else:
-                    # Ajouter nouvel utilisateur
-                    credentials["usernames"][new_username] = {
-                        "name": new_name,
-                        "password": new_password,  # clair temporaire
-                        "role": new_role
-                    }
-
-                    # Hasher tous les mots de passe
-                    hasher = stauth.Hasher()
-                    credentials = hasher.hash_passwords(credentials)
-                    st.session_state["authenticator"].credentials = credentials
-
-                    # Insérer dans Supabase
-                    supabase.table("users").insert({
-                        "username": new_username,
-                        "name": new_name,
-                        "role": new_role,
-                        "password_hash": credentials["usernames"][new_username]["password"],
-                        "active": True
-                    }).execute()
-
                     st.success(f"Utilisateur {new_username} ajouté !")
 
-
     # ------------------------
-    # DELETE USER (SUPABASE)
+    # DÉSACTIVER UN UTILISATEUR
     # ------------------------
-    st.markdown("### ❌ Supprimer un utilisateur")
+    st.markdown("### ❌ Désactiver un utilisateur")
+    active_usernames = [u["username"] for u in users_db if u["active"]]
+    if active_usernames:
+        del_username = st.selectbox("Sélectionner utilisateur à désactiver", active_usernames)
 
-    # Charger les utilisateurs actifs
-    users_db = (
-        supabase.table("users")
-        .select("username, role")
-        .eq("active", True)
-        .execute()
-        .data
-    )
-
-    usernames = [u["username"] for u in users_db]
-    del_username = st.selectbox("Sélectionner utilisateur à supprimer", usernames)
-
-    if st.button("Supprimer"):
-        if del_username == username:
-            st.error("❌ Impossible de supprimer votre propre compte")
-        else:
-            role_to_delete = next(
-                u["role"] for u in users_db if u["username"] == del_username
-            )
-
-            if role_to_delete == "admin":
-                st.error("❌ Impossible de supprimer un administrateur")
+        if st.button("Désactiver"):
+            if del_username == username:
+                st.error("❌ Impossible de désactiver votre propre compte")
             else:
-                # Désactivation (pas de DELETE physique)
-                supabase.table("users") \
-                    .update({"active": False}) \
-                    .eq("username", del_username) \
-                    .execute()
-
-                st.success(f"Utilisateur {del_username} désactivé")
+                role_to_delete = next(u["role"] for u in users_db if u["username"] == del_username)
+                if role_to_delete == "admin":
+                    st.error("❌ Impossible de désactiver un administrateur")
+                else:
+                    # Désactivation (update active = False)
+                    supabase.table("users").update({"active": False}).eq("username", del_username).execute()
+                    st.success(f"Utilisateur {del_username} désactivé")
 
     # ------------------------
     # ACTIVITY LOGS
