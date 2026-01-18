@@ -116,24 +116,25 @@ except Exception:
 # ------------------------
 # LOGIN
 # ------------------------
-name, authentication_status, username = st.session_state["authenticator"].login(
-    "Login", location="main"
-)
-# Store in session_state for persistence
-st.session_state["authentication_status"] = authentication_status
-st.session_state["username"] = username
-st.session_state["name"] = name
+# ------------------------
+# LOGIN / AUTHENTICATION
+# ------------------------
 
-# Check authentication status
-if st.session_state.get("authentication_status"):
+# Render login form (streamlit_authenticator stores values in session_state automatically)
+st.session_state["authenticator"].login("Login", location="main")
+
+# Check login status
+auth_status = st.session_state.get("authentication_status")
+if auth_status:
     username = st.session_state["username"]
     user_name = st.session_state["name"]
     role = credentials["usernames"][username].get("role", "user")
     st.sidebar.success(f"Connecté en tant que {user_name} ({role})")
-    # Logout button in sidebar
+    
+    # Logout button
     st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
 
-elif st.session_state.get("authentication_status") is False:
+elif auth_status is False:
     st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
 else:
@@ -141,19 +142,25 @@ else:
     st.stop()
 
 # ------------------------
-# SELECT PAGE
+# PAGE SELECTION (persistent)
 # ------------------------
-if "page" not in st.session_state:
-    if role == "admin":
-        st.session_state.page = "Dashboard"
-    else:
-        st.session_state.page = "Dashboard"
 
+# Initialize page in session_state if missing
+if "page" not in st.session_state:
+    st.session_state.page = "Dashboard"
+
+# Define available pages
 page_options = ["Dashboard"]
 if role == "admin":
     page_options = ["Dashboard", "User Management", "Statistics", "Objectifs"]
 
-st.session_state.page = st.sidebar.selectbox("Menu", page_options, index=page_options.index(st.session_state.page))
+# Sidebar selectbox for page selection, persists using session_state
+st.session_state.page = st.sidebar.selectbox(
+    "Menu",
+    page_options,
+    index=page_options.index(st.session_state.page)
+)
+
 page = st.session_state.page
 
 if page == "Objectifs":
