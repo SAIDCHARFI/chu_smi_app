@@ -385,6 +385,167 @@ def run_HDJ():
                 ]
             }
         }
+    },
+        "ANTI-IL-17 (Secukinumab – Ixekizumab – Brodalumab)": {
+            "COURT TERME (heures → jours)": {
+                "Mineurs": [
+                    "Réactions au point d’injection",
+                    "Céphalées",
+                    "Asthénie transitoire",
+                    "Rhinopharyngite",
+                    "Prurit cutané"
+                ],
+                "Modérés": [
+                    "Infections ORL basses",
+                    "Diarrhée",
+                    "Candidose orale ou génitale",
+                    "Exacerbation de dermatoses"
+                ],
+                "Majeurs": [
+                    "Réaction anaphylactique (rare)",
+                    "Infections sévères précoces",
+                    "Poussée de MICI (Crohn surtout)"
+                ]
+            },
+            "MOYEN TERME (semaines → mois)": {
+                "Mineurs": [
+                    "Infections respiratoires récidivantes",
+                    "Fatigue persistante"
+                ],
+                "Modérés": [
+                    "Candidoses récidivantes",
+                    "Neutropénie modérée",
+                    "Aggravation ou révélation d’une MICI"
+                ],
+                "Majeurs": [
+                    "Infections opportunistes",
+                    "Intolérance immunologique sévère"
+                ]
+            },
+            "LONG TERME (mois → années)": {
+                "Mineurs": [
+                    "Bonne tolérance globale"
+                ],
+                "Modérés": [
+                    "Infections chroniques récidivantes"
+                ],
+                "Majeurs": [
+                    "Incertitude à long terme sur le risque néoplasique (surveillance)"
+                ]
+            }
+        },
+
+        "ANTI-IL-23 (Ustekinumab – Guselkumab – Risankizumab – Tildrakizumab)": {
+            "COURT TERME (heures → jours)": {
+                "Mineurs": [
+                    "Réaction au point d’injection",
+                    "Céphalées",
+                    "Fatigue"
+                ],
+                "Modérés": [
+                    "Infections ORL",
+                    "Diarrhée",
+                    "Nausées"
+                ],
+                "Majeurs": [
+                    "Réaction allergique sévère (rare)"
+                ]
+            },
+            "MOYEN TERME (semaines → mois)": {
+                "Mineurs": [
+                    "Asthénie persistante"
+                ],
+                "Modérés": [],
+                "Majeurs": []
+            },
+            "LONG TERME (mois → années)": {
+                "Mineurs": [],
+                "Modérés": [],
+                "Majeurs": []
+            }
+        },
+
+        "ANTI-IL-1 (Anakinra – Canakinumab)": {
+            "COURT TERME (heures → jours)": {
+                "Mineurs": [
+                    "Réactions au point d’injection",
+                    "Céphalées",
+                    "Asthénie transitoire",
+                    "Fièvre modérée"
+                ],
+                "Modérés": [
+                    "Infections ORL basses",
+                    "Diarrhée",
+                    "Cytolyse hépatique modérée"
+                ],
+                "Majeurs": [
+                    "Réaction allergique sévère / anaphylaxie",
+                    "Infection aiguë sévère révélée"
+                ]
+            },
+            "MOYEN TERME (semaines → mois)": {
+                "Mineurs": [
+                    "Fatigue persistante"
+                ],
+                "Modérés": [
+                    "Neutropénie modérée",
+                    "Infections récidivantes"
+                ],
+                "Majeurs": [
+                    "Infections opportunistes"
+                ]
+            },
+            "LONG TERME (mois → années)": {
+                "Mineurs": [
+                    "Bonne tolérance globale"
+                ],
+                "Modérés": [],
+                "Majeurs": []
+            }
+        },
+
+        "ANTI-JAK (Tofacitinib – Baricitinib – Upadacitinib – Ruxolitinib)": {
+            "COURT TERME (heures → jours)": {
+                "Mineurs": [
+                    "Céphalées",
+                    "Nausées",
+                    "Asthénie transitoire"
+                ],
+                "Modérés": [
+                    "Infections ORL",
+                    "Acné",
+                    "Hyperlipidémie"
+                ],
+                "Majeurs": [
+                    "Infection aiguë sévère révélée",
+                    "Événement thromboembolique"
+                ]
+            },
+            "MOYEN TERME (semaines → mois)": {
+                "Mineurs": [
+                    "Fatigue persistante"
+                ],
+                "Modérés": [
+                    "Zona",
+                    "Anémie / neutropénie",
+                    "Hyperlipidémie persistante"
+                ],
+                "Majeurs": [
+                    "Infections opportunistes",
+                    "Accidents cardiovasculaires"
+                ]
+            },
+            "LONG TERME (mois → années)": {
+                "Mineurs": [],
+                "Modérés": [
+                    "Infections chroniques récidivantes"
+                ],
+                "Majeurs": [
+                    "Risque cardiovasculaire accru",
+                    "Risque néoplasique potentiel"
+                ]
+            }
+        }
     }
 
     # ---------------------------
