@@ -384,8 +384,7 @@ def run_HDJ():
                     "Atteinte hépatique chronique (rare)"
                 ]
             }
-        }
-    },
+        },
         "ANTI-IL-17 (Secukinumab – Ixekizumab – Brodalumab)": {
             "COURT TERME (heures → jours)": {
                 "Mineurs": [
