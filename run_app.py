@@ -467,11 +467,28 @@ if page == "Dashboard":
     with col3:
         patient_age = st.number_input("Âge", min_value=0, max_value=120, step=1, key="age")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        patient_sex = st.radio("Sexe", ["Masculin", "Féminin"], horizontal=True, key="sex")
+        patient_sex = st.radio(
+            "Sexe",
+            ["Masculin", "Féminin"],
+            horizontal=True,
+            key="sex"
+        )
+
     with col2:
-        patient_unite = st.selectbox("Unité", ["Hospitalisation", "HDJ"], key="unite")
+        patient_unite = st.selectbox(
+            "Unité",
+            ["Hospitalisation", "HDJ"],
+            key="unite"
+        )
+
+    with col3:
+        date_hospitalisation = st.date_input(
+            "Date d’hospitalisation",
+            value=datetime.now().date(),
+            key="date_hosp"
+        )
 
     if patient_unite == "HDJ":
         from HDJ import run_HDJ
@@ -783,6 +800,7 @@ if page == "Dashboard":
             "patient_age": int(patient_age) if patient_age else None,
             "patient_sex": patient_sex or None,
             "patient_unite": patient_unite or None,
+            "date_hospitalisation": date_hospitalisation.isoformat() if date_hospitalisation else None,
             "patient_motif": patient_motif or None,
             "patient_diagnosis": patient_diagnosis or None,
             "incident": incident == "Oui",
