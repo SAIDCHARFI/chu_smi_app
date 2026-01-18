@@ -133,10 +133,18 @@ else:
 # ------------------------
 # SELECT PAGE
 # ------------------------
+if "page" not in st.session_state:
+    if role == "admin":
+        st.session_state.page = "Dashboard"
+    else:
+        st.session_state.page = "Dashboard"
+
+page_options = ["Dashboard"]
 if role == "admin":
-    page = st.sidebar.selectbox("Menu", ["Dashboard", "User Management", "Statistics", "Objectifs"])
-else:
-    page = "Dashboard"
+    page_options = ["Dashboard", "User Management", "Statistics", "Objectifs"]
+
+st.session_state.page = st.sidebar.selectbox("Menu", page_options, index=page_options.index(st.session_state.page))
+page = st.session_state.page
 
 if page == "Objectifs":
     from objectifs import run_objectifs
