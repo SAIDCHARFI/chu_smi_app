@@ -114,29 +114,28 @@ except Exception:
 
 
 # ------------------------
-# LOGIN
-# ------------------------
-# ------------------------
 # LOGIN / AUTHENTICATION
 # ------------------------
 
-# Render login form (streamlit_authenticator stores values in session_state automatically)
-st.session_state["authenticator"].login("Login", location="main")
+# Render login form (this handles cookies and UI)
+st.session_state["authenticator"].login("Login", "main")  # no assignment
 
-# Check login status
+# Now read state from session_state
 auth_status = st.session_state.get("authentication_status")
+username = st.session_state.get("username")
+name = st.session_state.get("name")
+
 if auth_status:
-    username = st.session_state["username"]
-    user_name = st.session_state["name"]
     role = credentials["usernames"][username].get("role", "user")
-    st.sidebar.success(f"Connecté en tant que {user_name} ({role})")
-    
+    st.sidebar.success(f"Connecté en tant que {name} ({role})")
+
     # Logout button
     st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
 
 elif auth_status is False:
     st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
+
 else:
     st.warning("Veuillez entrer vos identifiants")
     st.stop()
