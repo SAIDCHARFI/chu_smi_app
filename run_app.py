@@ -116,13 +116,22 @@ except Exception:
 # ------------------------
 # LOGIN
 # ------------------------
-authenticator.login("main")
+name, authentication_status, username = st.session_state["authenticator"].login("Login", "main")
+
+# Store in session_state for persistence
+st.session_state["authentication_status"] = authentication_status
+st.session_state["username"] = username
+st.session_state["name"] = name
+
+# Check authentication status
 if st.session_state.get("authentication_status"):
     username = st.session_state["username"]
     user_name = st.session_state["name"]
     role = credentials["usernames"][username].get("role", "user")
     st.sidebar.success(f"Connecté en tant que {user_name} ({role})")
-    authenticator.logout("Logout", "sidebar", key="logout_sidebar")
+    # Logout button in sidebar
+    st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
+
 elif st.session_state.get("authentication_status") is False:
     st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
