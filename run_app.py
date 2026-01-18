@@ -113,14 +113,14 @@ except Exception:
     st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
 
 
-# ------------------------
+## ------------------------
 # LOGIN / AUTHENTICATION
 # ------------------------
 
-# Render login form (this handles cookies and UI)
-st.session_state["authenticator"].login("Login", "main")  # no assignment
+# Render login form correctly
+st.session_state["authenticator"].login(label="Login", location="main")  # <-- fixed
 
-# Now read state from session_state
+# Now read auth info from session_state
 auth_status = st.session_state.get("authentication_status")
 username = st.session_state.get("username")
 name = st.session_state.get("name")
@@ -128,7 +128,7 @@ name = st.session_state.get("name")
 if auth_status:
     role = credentials["usernames"][username].get("role", "user")
     st.sidebar.success(f"Connecté en tant que {name} ({role})")
-
+    
     # Logout button
     st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
 
