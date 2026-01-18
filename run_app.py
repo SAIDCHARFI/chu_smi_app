@@ -118,7 +118,7 @@ except Exception:
 # ------------------------
 
 # Render login form correctly
-st.session_state["authenticator"].login(label="Login", location="main")  # <-- fixed
+st.session_state["authenticator"].login(location="main")  # <-- fixed
 
 # Now read auth info from session_state
 auth_status = st.session_state.get("authentication_status")
