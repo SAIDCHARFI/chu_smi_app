@@ -116,8 +116,9 @@ except Exception:
 # ------------------------
 # LOGIN
 # ------------------------
-name, authentication_status, username = st.session_state["authenticator"].login("Login", "main")
-
+name, authentication_status, username = st.session_state["authenticator"].login(
+    "Login", location="main"
+)
 # Store in session_state for persistence
 st.session_state["authentication_status"] = authentication_status
 st.session_state["username"] = username
