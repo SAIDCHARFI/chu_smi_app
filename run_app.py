@@ -500,6 +500,11 @@ if page == "Dashboard":
     nb_erreurs = None
     erreur_description = ""
     if erreur_medicale == "Oui":
+        st.warning(
+        "Une erreur médicale est l’échec d’une action planifiée à être menée comme prévu "
+        "(erreur d’exécution), ou l’utilisation d’un mauvais plan pour atteindre un objectif "
+        "(erreur de planification), pouvant entraîner ou non un préjudice pour le patient."
+        )
         nb_erreurs = st.number_input("Nombre d’erreurs médicales", min_value=1, step=1, key="nb_erreurs")
         erreur_description = st.text_area("Décrire l’erreur médicale", key="erreur_desc")
 
@@ -519,6 +524,12 @@ if page == "Dashboard":
     effets_graves = st.radio("Effets indésirables graves", ["Non", "Oui"], horizontal=True, key="effets")
     effets_graves_description = ""
     if effets_graves == "Oui":
+        st.warning(
+        "Un effet indésirable grave est un effet indésirable qui, quelle que soit la dose administrée, "
+        "entraîne la mort, met la vie en danger, nécessite une hospitalisation ou la prolonge, "
+        "provoque une incapacité ou un handicap significatif ou durable, "
+        "ou entraîne une anomalie congénitale ou une malformation."
+        )
         effets_graves_description = st.text_area("Décrire les effets indésirables graves", key="effets_desc")
 
     st.divider()
