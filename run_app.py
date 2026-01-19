@@ -118,15 +118,16 @@ except Exception:
 # ------------------------
 
 # Affiche le formulaire de login seulement si pas encore connecté
-if "authentication_status" not in st.session_state or st.session_state["authentication_status"] is None:
+auth_status = st.session_state.get("authentication_status")
+if auth_status is None:
     authenticator.login(location="main")
 
-# Récupère le statut et infos après login / refresh
+# Lire le statut et les infos depuis session_state
 auth_status = st.session_state.get("authentication_status")
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
-# Vérifie si authentifié
+# Vérification
 if auth_status is False:
     st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
@@ -134,11 +135,14 @@ elif auth_status is None:
     st.warning("Veuillez entrer vos identifiants")
     st.stop()
 
-# Sidebar : info + logout
+# ------------------------
+# SIDEBAR INFO + LOGOUT
+# ------------------------
 role = credentials["usernames"][username].get("role", "user")
 st.sidebar.success(f"Connecté en tant que {name} ({role})")
-authenticator.logout("Logout", "sidebar", key="logout_sidebar")
 
+# Logout button
+authenticator.logout("Logout", "sidebar", key="logout_sidebar")
 # ------------------------
 # PAGE SELECTION (persistent)
 # ------------------------
@@ -240,7 +244,6 @@ if page == "User Management":
                         }
                         hasher = stauth.Hasher()
                         credentials = hasher.hash_passwords(credentials)
-                        st.session_state["authenticator"].credentials = credentials
                         st.success(f"Utilisateur {new_username} réactivé et mot de passe mis à jour !")
                 else:
                     # Nouvel utilisateur → hash et insert
@@ -270,7 +273,6 @@ if page == "User Management":
                     }
                     hasher = stauth.Hasher()
                     credentials = hasher.hash_passwords(credentials)
-                    st.session_state["authenticator"].credentials = credentials
                     st.success(f"Utilisateur {new_username} ajouté !")
 
     # ------------------------
@@ -319,7 +321,7 @@ if page == "User Management":
     if target_role == "super_admin":
         st.error("⛔ Action interdite sur un super administrateur")
         st.stop()
-        
+
     new_password_reset = st.text_input("Nouveau mot de passe", type="password", key="reset_password")
     reset_btn = st.button("Réinitialiser le mot de passe")
     if reset_btn:
@@ -342,7 +344,6 @@ if page == "User Management":
                 credentials["usernames"][reset_username]["password"] = new_password_reset
                 hasher = stauth.Hasher()
                 credentials = hasher.hash_passwords(credentials)
-                st.session_state["authenticator"].credentials = credentials
             st.success(f"Mot de passe de {reset_username} réinitialisé !")
     # ACTIVITY LOGS
     # ------------------------
