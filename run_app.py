@@ -98,31 +98,21 @@ cookie_expiry_days = 1
 if "authenticator" not in st.session_state:
     st.session_state["authenticator"] = stauth.Authenticate(
         credentials,
-        cookie_name,
-        cookie_key,
-        cookie_expiry_days,
+        cookie_name="clinical_auth",
+        cookie_key="super_secret_key_123",
+        cookie_expiry_days=1,
         prehashed=True
     )
 authenticator = st.session_state["authenticator"]
 
-
-try:
-    supabase.table("users").select("id").limit(1).execute()
-except Exception:
-    SUPABASE_ONLINE = False
-    st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
-
-
 # ------------------------
 # LOGIN / AUTHENTICATION (persistant)
 # ------------------------
-
-# Affiche le formulaire de login seulement si pas encore connecté
 auth_status = st.session_state.get("authentication_status")
 if auth_status is None:
     authenticator.login(location="main")
 
-# Lire le statut et les infos depuis session_state
+# Récupérer les infos de session
 auth_status = st.session_state.get("authentication_status")
 username = st.session_state.get("username")
 name = st.session_state.get("name")
@@ -141,8 +131,9 @@ elif auth_status is None:
 role = credentials["usernames"][username].get("role", "user")
 st.sidebar.success(f"Connecté en tant que {name} ({role})")
 
-# Logout button
 authenticator.logout("Logout", "sidebar", key="logout_sidebar")
+
+
 # ------------------------
 # PAGE SELECTION (persistent)
 # ------------------------
@@ -218,6 +209,7 @@ if page == "User Management":
                         st.warning("⚠️ Utilisateur déjà existant et actif")
                     else:
                         # Réactivation d'un utilisateur désactivé
+                        # Nouvel utilisateur ou réactivation
                         temp_credentials = {
                             "usernames": {
                                 new_username: {
@@ -229,22 +221,34 @@ if page == "User Management":
                         }
                         hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][new_username]["password"]
 
-                        supabase.table("users").update({
-                            "active": True,
-                            "name": new_name,
-                            "role": new_role,
-                            "password_hash": hashed_password
-                        }).eq("username", new_username).execute()
+                        # Supabase
+                        if exists:
+                            # réactivation
+                            supabase.table("users").update({
+                                "active": True,
+                                "name": new_name,
+                                "role": new_role,
+                                "password_hash": hashed_password
+                            }).eq("username", new_username).execute()
+                        else:
+                            # nouvel utilisateur
+                            supabase.table("users").insert({
+                                "username": new_username,
+                                "name": new_name,
+                                "role": new_role,
+                                "password_hash": hashed_password,
+                                "active": True
+                            }).execute()
 
-                        # Mettre à jour credentials localement
+                        # Mettre à jour credentials local (PAS l'authenticator)
                         credentials["usernames"][new_username] = {
                             "name": new_name,
                             "password": new_password,
                             "role": new_role
                         }
-                        hasher = stauth.Hasher()
-                        credentials = hasher.hash_passwords(credentials)
-                        st.success(f"Utilisateur {new_username} réactivé et mot de passe mis à jour !")
+
+                        st.success(f"Utilisateur {new_username} ajouté / réactivé !")
+
                 else:
                     # Nouvel utilisateur → hash et insert
                     temp_credentials = {
@@ -324,26 +328,27 @@ if page == "User Management":
 
     new_password_reset = st.text_input("Nouveau mot de passe", type="password", key="reset_password")
     reset_btn = st.button("Réinitialiser le mot de passe")
+
     if reset_btn:
         if not new_password_reset:
             st.warning("Veuillez saisir un nouveau mot de passe")
         else:
-            # Hash du nouveau mot de passe
+            # Hasher le mot de passe pour Supabase
             temp_credentials = {
                 "usernames": {
                     reset_username: {"password": new_password_reset}
                 }
             }
             hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][reset_username]["password"]
+
             # Mettre à jour dans Supabase
             supabase.table("users").update({
                 "password_hash": hashed_password
             }).eq("username", reset_username).execute()
-            # Mettre à jour dans credentials local
-            if reset_username in credentials["usernames"]:
-                credentials["usernames"][reset_username]["password"] = new_password_reset
-                hasher = stauth.Hasher()
-                credentials = hasher.hash_passwords(credentials)
+
+            # Mettre à jour credentials local seulement (PAS l'authenticator)
+            credentials["usernames"][reset_username]["password"] = new_password_reset
+
             st.success(f"Mot de passe de {reset_username} réinitialisé !")
     # ACTIVITY LOGS
     # ------------------------
