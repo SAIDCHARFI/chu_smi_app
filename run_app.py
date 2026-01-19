@@ -150,7 +150,7 @@ if "page" not in st.session_state:
 
 # Define available pages
 page_options = ["Dashboard"]
-if role == "admin":
+if role in ["admin", "super_admin"]:
     page_options = ["Dashboard", "User Management", "Statistics", "Objectifs"]
 
 # Sidebar selectbox for page selection, persists using session_state
@@ -183,7 +183,8 @@ if page == "User Management":
         st.info("Aucun utilisateur disponible.")
     else:
         # Convertir en DataFrame et supprimer les colonnes sensibles
-        df_users = pd.DataFrame(users_db)
+        users_visible = [u for u in users_db if u.get("role") != "super_admin"]
+        df_users = pd.DataFrame(users_visible)
         for col in ["id", "password_hash"]:
             if col in df_users.columns:
                 df_users.drop(columns=col, inplace=True)
@@ -197,7 +198,11 @@ if page == "User Management":
         new_username = st.text_input("Nom d'utilisateur")
         new_name = st.text_input("Nom complet")
         new_password = st.text_input("Mot de passe", type="password")
-        new_role = st.selectbox("Rôle", ["user", "admin"])
+        if role == "super_admin":
+            new_role = st.selectbox("Rôle", ["user", "admin", "super_admin"])
+        else:
+            new_role = st.selectbox("Rôle", ["user", "admin"])
+
         add_user = st.form_submit_button("Ajouter / Réactiver")
         if add_user:
             if not new_username or not new_password:
@@ -273,7 +278,11 @@ if page == "User Management":
     # DÉSACTIVER UN UTILISATEUR
     # ------------------------
     st.markdown("### ❌ Désactiver un utilisateur")
-    active_usernames = [u["username"] for u in users_db if u["active"]]
+    active_usernames = [
+    u["username"]
+    for u in users_db
+    if u["active"] and u.get("role") != "super_admin"
+    ]
     if active_usernames:
         del_username = st.selectbox("Sélectionner utilisateur à désactiver", active_usernames)
         if st.button("Désactiver"):
@@ -292,11 +301,26 @@ if page == "User Management":
     # RÉINITIALISER MOT DE PASSE
     # ------------------------
     st.markdown("### 🔑 Réinitialiser le mot de passe d'un utilisateur")
+
+    resettable_users = [
+    u["username"]
+    for u in users_db
+    if u["active"] and u.get("role") != "super_admin"]
     reset_username = st.selectbox(
-        "Sélectionner utilisateur", 
-        [u["username"] for u in users_db if u["active"]], 
-        key="reset_user"
+    "Sélectionner utilisateur", 
+    resettable_users, 
+    key="reset_user"
     )
+    # 🛡️ GARDE-FOU (Option PRO)
+    target_role = next(
+        (u["role"] for u in users_db if u["username"] == reset_username),
+        None
+        )
+
+    if target_role == "super_admin":
+        st.error("⛔ Action interdite sur un super administrateur")
+        st.stop()
+        
     new_password_reset = st.text_input("Nouveau mot de passe", type="password", key="reset_password")
     reset_btn = st.button("Réinitialiser le mot de passe")
     if reset_btn:
