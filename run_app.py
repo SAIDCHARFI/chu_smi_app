@@ -80,7 +80,7 @@ else:
 credentials = {"usernames": {}}
 for u in users_db:
     if u.get("active"):
-        credentials["usernames"][u["username"]] = {
+        credentials_local["usernames"][u["username"]] = {
             "name": u["name"],
             "password": u["password_hash"],  # mot de passe hashé déjà
             "role": u.get("role", "user")
@@ -164,6 +164,7 @@ if page == "Objectifs":
 # ------------------------
 # USER MANAGEMENT (ADMIN)
 # ------------------------
+credentials_local = credentials.copy()
 
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
@@ -275,8 +276,6 @@ if page == "User Management":
                         "password": new_password,
                         "role": new_role
                     }
-                    hasher = stauth.Hasher()
-                    credentials = hasher.hash_passwords(credentials)
                     st.success(f"Utilisateur {new_username} ajouté !")
 
     # ------------------------
@@ -347,8 +346,7 @@ if page == "User Management":
             }).eq("username", reset_username).execute()
 
             # Mettre à jour credentials local seulement (PAS l'authenticator)
-            credentials["usernames"][reset_username]["password"] = new_password_reset
-
+            credentials_local["usernames"][reset_username]["password"] = new_password_reset
             st.success(f"Mot de passe de {reset_username} réinitialisé !")
     # ACTIVITY LOGS
     # ------------------------
