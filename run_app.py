@@ -819,8 +819,8 @@ if page == "Dashboard":
         obs_barriere = bool(obs_barriere)
 
         record = {
-            "patient_first_name": patient_first_name or None,
-            "patient_last_name": patient_last_name or None,
+            "patient_first_name": patient_first_name.lower() or None,
+            "patient_last_name": patient_last_name.upper() or None,
             "patient_age": int(patient_age) if patient_age else None,
             "patient_sex": patient_sex or None,
             "patient_unite": patient_unite or None,
