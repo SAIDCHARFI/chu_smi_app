@@ -113,32 +113,31 @@ except Exception:
     st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
 
 
-## ------------------------
-# LOGIN / AUTHENTICATION
+# ------------------------
+# LOGIN / AUTHENTICATION (persistant)
 # ------------------------
 
-# Render login form correctly
-st.session_state["authenticator"].login(location="main")  # <-- fixed
+# Affiche le formulaire de login seulement si pas encore connecté
+if "authentication_status" not in st.session_state or st.session_state["authentication_status"] is None:
+    authenticator.login(location="main")
 
-# Now read auth info from session_state
+# Récupère le statut et infos après login / refresh
 auth_status = st.session_state.get("authentication_status")
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
-if auth_status:
-    role = credentials["usernames"][username].get("role", "user")
-    st.sidebar.success(f"Connecté en tant que {name} ({role})")
-    
-    # Logout button
-    st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
-
-elif auth_status is False:
+# Vérifie si authentifié
+if auth_status is False:
     st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
-
-else:
+elif auth_status is None:
     st.warning("Veuillez entrer vos identifiants")
     st.stop()
+
+# Sidebar : info + logout
+role = credentials["usernames"][username].get("role", "user")
+st.sidebar.success(f"Connecté en tant que {name} ({role})")
+authenticator.logout("Logout", "sidebar", key="logout_sidebar")
 
 # ------------------------
 # PAGE SELECTION (persistent)
