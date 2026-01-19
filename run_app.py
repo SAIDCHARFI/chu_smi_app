@@ -9,6 +9,17 @@ from io import BytesIO
 import plotly.express as px
 import os
 import json
+st.set_page_config(page_title="Indicateurs de Suivi", layout="wide")
+
+# Supprimer le menu hamburger, le logo et le footer
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 LOCAL_FILE = "local_records.json"
 
