@@ -17,6 +17,7 @@ hide_streamlit_style = """
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 footer {visibility: hidden; height: 0px;}
+a[href*="streamlit.io"] {display:none !important;}  /* supprime tous les liens vers Streamlit */
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
