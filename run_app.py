@@ -80,12 +80,12 @@ else:
 credentials = {"usernames": {}}
 for u in users_db:
     if u.get("active"):
-        credentials_local["usernames"][u["username"]] = {
+        credentials["usernames"][u["username"]] = {
             "name": u["name"],
             "password": u["password_hash"],  # mot de passe hashé déjà
             "role": u.get("role", "user")
         }
-
+credentials_local = credentials.copy()
 # Cookies
 cookie_name = "clinical_auth"
 cookie_key = "super_secret_key_123"
@@ -164,7 +164,7 @@ if page == "Objectifs":
 # ------------------------
 # USER MANAGEMENT (ADMIN)
 # ------------------------
-credentials_local = credentials.copy()
+
 
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
@@ -242,7 +242,7 @@ if page == "User Management":
                             }).execute()
 
                         # Mettre à jour credentials local (PAS l'authenticator)
-                        credentials["usernames"][new_username] = {
+                        credentials_local["usernames"][new_username] = {
                             "name": new_name,
                             "password": new_password,
                             "role": new_role
@@ -271,7 +271,7 @@ if page == "User Management":
                     }).execute()
 
                     # Mettre à jour credentials localement
-                    credentials["usernames"][new_username] = {
+                    credentials_local["usernames"][new_username] = {
                         "name": new_name,
                         "password": new_password,
                         "role": new_role
