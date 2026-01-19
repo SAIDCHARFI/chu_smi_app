@@ -11,12 +11,12 @@ import os
 import json
 st.set_page_config(page_title="Indicateurs de Suivi", layout="wide")
 
-# Supprimer le menu hamburger, le logo et le footer
+# CSS pour cacher le menu, le header et le footer Streamlit
 hide_streamlit_style = """
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+#MainMenu {visibility: hidden;}    /* Hamburger menu */
+footer {visibility: hidden;}       /* Footer Streamlit */
+header {visibility: hidden;}       /* Header Streamlit */
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
