@@ -80,6 +80,33 @@ user = st.session_state.user
 try:
     res = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute()
     profile = res.data
+    if profile.get("is_temp_pass", False):
+        st.warning("⚠️ Vous utilisez un mot de passe temporaire. Vous devez le changer maintenant pour sécuriser votre compte !")
+
+        new_pass = st.text_input("Nouveau mot de passe", type="password")
+        confirm_pass = st.text_input("Confirmer mot de passe", type="password")
+
+        if st.button("Mettre à jour le mot de passe"):
+            if new_pass != confirm_pass:
+                st.error("❌ Les mots de passe ne correspondent pas")
+            elif len(new_pass) < 6:
+                st.error("❌ Le mot de passe doit contenir au moins 6 caractères")
+            else:
+                try:
+                    # Changer le mot de passe via Supabase
+                    supabase.auth.update_user({"password": new_pass})
+
+                    # Mettre à jour le flag temporaire
+                    supabase.table("users").update({"is_temp_pass": False}).eq("auth_user_id", user.id).execute()
+
+                    st.success("✅ Mot de passe changé avec succès ! Vous pouvez maintenant accéder à l'application.")
+                    st.experimental_rerun()
+                except Exception as e:
+                    st.error("❌ Impossible de changer le mot de passe")
+                    st.exception(e)
+
+        # On stoppe l'exécution pour bloquer l'accès aux autres pages
+        st.stop()
     if not profile:
         st.error(
             "❌ Aucun profil trouvé pour cet utilisateur.\n"
@@ -191,9 +218,11 @@ if page == "User Management":
                         "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "active": True
+                        "active": True,
+                        "is_temp_pass": True
                     }).execute()
-                    st.success(f"Utilisateur {new_username} ajouté et invité !")
+                    supabase.auth.api.reset_password_for_email(new_email)  
+                    st.success(f"Utilisateur {new_username} créé et un email avec mot de passe temporaire a été envoyé")
                 except Exception as e:
                     st.error("❌ Impossible de créer l'utilisateur")
                     st.exception(e)
