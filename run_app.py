@@ -29,6 +29,9 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 SUPABASE_URL = st.secrets["SUPABASE"]["URL"]
 SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+SUPABASE_SERVICE_KEY = st.secrets["SUPABASE"]["SERVICE_ROLE_KEY"]
+supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 SUPABASE_ONLINE = True
 LOCAL_FILE = "local_records.json"
 
@@ -177,7 +180,7 @@ if page == "User Management":
                     st.success(f"Utilisateur {new_username} réactivé !")
             else:
                 try:
-                    auth_user = supabase.auth.admin.create_user({
+                    auth_user = supabase_admin.auth.admin.create_user({
                                 "email": new_email,
                                 "email_confirm": False
                             })                    
