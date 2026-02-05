@@ -181,7 +181,8 @@ if page == "User Management":
                                 "email": new_email,
                                 "password": "MotDePasseTemp123!",  # obligatoire pour se connecter
                                 "email_confirm": True
-                            })                    supabase.table("users").insert({
+                            })                    
+                        supabase.table("users").insert({
                         "auth_user_id": auth_user.user.id,
                         "email": new_email,
                         "username": new_username,
