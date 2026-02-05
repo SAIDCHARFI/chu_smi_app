@@ -72,7 +72,7 @@ if "user" not in st.session_state:
             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
             st.session_state.user = res.user
             st.session_state.session = res.session  
-            st.experimental_rerun()
+            st.rerun()
         except Exception:
             st.error("❌ Email ou mot de passe incorrect")
     st.stop()
@@ -106,7 +106,7 @@ try:
                     supabase.table("users").update({"is_temp_pass": False}).eq("auth_user_id", user.id).execute()
 
                     st.success("✅ Mot de passe changé avec succès ! Vous pouvez maintenant accéder à l'application.")
-                    st.experimental_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error("❌ Impossible de changer le mot de passe")
                     st.exception(e)
@@ -138,7 +138,7 @@ st.sidebar.success(f"{name} ({role})")
 if st.sidebar.button("Logout"):
     if "user" in st.session_state:
         del st.session_state["user"]
-    st.experimental_rerun()
+    st.rerun()
 
 # ------------------------
 # PAGE SELECTION
