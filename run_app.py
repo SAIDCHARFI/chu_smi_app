@@ -182,6 +182,7 @@ if page == "User Management":
                 try:
                     auth_user = supabase_admin.auth.admin.create_user({
                                 "email": new_email,
+                                "password": "Tmp1234",
                                 "email_confirm": True
                             })                    
                     supabase.table("users").insert({
@@ -192,7 +193,6 @@ if page == "User Management":
                         "role": new_role,
                         "active": True
                     }).execute()
-                    supabase.auth.reset_password_email(new_email)
                     st.success(f"Utilisateur {new_username} ajouté et invité !")
                 except Exception as e:
                     st.error("❌ Impossible de créer l'utilisateur")
