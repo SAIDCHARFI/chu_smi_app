@@ -3,298 +3,183 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client, Client
 from datetime import datetime
-import yaml
-import streamlit_authenticator as stauth
 from io import BytesIO
 import plotly.express as px
 import os
 import json
+
 st.set_page_config(page_title="Indicateurs de Suivi", layout="wide")
 
-# CSS pour cacher le menu, le header et le footer Streamlit
+# ------------------------
+# CSS pour cacher menu/header/footer
+# ------------------------
 hide_streamlit_style = """
 <style>
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 footer {visibility: hidden; height: 0px;}
-a[href*="streamlit.io"] {display:none !important;}  /* supprime tous les liens vers Streamlit */
+a[href*="streamlit.io"] {display:none !important;}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-LOCAL_FILE = "local_records.json"
-
-SUPABASE_ONLINE = True
-def save_locally(record):
-    """Save record locally when offline."""
-    if os.path.exists(LOCAL_FILE):
-        with open(LOCAL_FILE, "r") as f:
-            data = json.load(f)
-    else:
-        data = []
-    data.append(record)
-    with open(LOCAL_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-    st.warning("⚠️ Connexion perdue, données stockées localement")
-
-def sync_local_to_supabase():
-    """Try to send locally saved records to Supabase."""
-    if not os.path.exists(LOCAL_FILE):
-        return
-    with open(LOCAL_FILE, "r") as f:
-        local_data = json.load(f)
-    sent_records = []
-    for record in local_data:
-        try:
-            supabase.table("indicateurs_cliniques").insert(record).execute()
-            supabase.table("activity_logs").insert({
-                "username": username,
-                "action": f"Enregistrement patient {record.get('patient_first_name')} {record.get('patient_last_name')}",
-                "timestamp": datetime.now().isoformat()
-            }).execute()
-            sent_records.append(record)
-        except:
-            st.warning("⚠️ Toujours hors ligne, impossible de synchroniser")
-            break
-    # Remove sent records
-    if sent_records:
-        remaining = [r for r in local_data if r not in sent_records]
-        if remaining:
-            with open(LOCAL_FILE, "w") as f:
-                json.dump(remaining, f, indent=2)
-        else:
-            os.remove(LOCAL_FILE)
-        st.success(f"✅ {len(sent_records)} enregistrement(s) local(aux) envoyés à Supabase")
-
-
 # ------------------------
-# PAGE CONFIG
-# ------------------------
-st.set_page_config(page_title="Indicateurs de Suivi", layout="wide")
-
-# ------------------------
-# SUPABASE CLIENT
+# SUPABASE CONFIG
 # ------------------------
 SUPABASE_URL = st.secrets["SUPABASE"]["URL"]
 SUPABASE_KEY = st.secrets["SUPABASE"]["KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_ONLINE = True
+LOCAL_FILE = "local_records.json"
 
 # ------------------------
-# LOAD USERS FROM SUPABASE
+# Fonction pour sauvegarder localement
 # ------------------------
-
-if SUPABASE_ONLINE:
-    users_db = supabase.table("users").select("*").execute().data
-else:
-    users_db = []
-
-# Convertir en dictionnaire pour Streamlit Authenticator
-credentials = {"usernames": {}}
-for u in users_db:
-    if u.get("active"):
-        credentials["usernames"][u["username"]] = {
-            "name": u["name"],
-            "password": u["password_hash"],  # mot de passe hashé déjà
-            "role": u.get("role", "user")
-        }
-
-# Cookies
-cookie_name = "clinical_auth"
-cookie_key = "super_secret_key_123"
-cookie_expiry_days = 1
-
+def save_locally(record):
+    local_data = []
+    if os.path.exists(LOCAL_FILE):
+        with open(LOCAL_FILE, "r") as f:
+            try:
+                local_data = json.load(f)
+            except json.JSONDecodeError:
+                local_data = []
+    local_data.append(record)
+    with open(LOCAL_FILE, "w") as f:
+        json.dump(local_data, f, indent=4)
+    st.info("💾 Données enregistrées localement")
 
 # ------------------------
-# AUTHENTICATOR INIT
+# CHECK CONNECTION
 # ------------------------
-if "authenticator" not in st.session_state:
-    st.session_state["authenticator"] = stauth.Authenticate(
-        credentials,
-        cookie_name,
-        cookie_key,
-        cookie_expiry_days,
-        prehashed=True
-    )
-authenticator = st.session_state["authenticator"]
-
-
 try:
     supabase.table("users").select("id").limit(1).execute()
 except Exception:
     SUPABASE_ONLINE = False
     st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
 
-
-## ------------------------
-# LOGIN / AUTHENTICATION
 # ------------------------
-
-# Render login form correctly
-st.session_state["authenticator"].login(location="main")  # <-- fixed
-
-# Now read auth info from session_state
-auth_status = st.session_state.get("authentication_status")
-username = st.session_state.get("username")
-name = st.session_state.get("name")
-
-if auth_status:
-    role = credentials["usernames"][username].get("role", "user")
-    st.sidebar.success(f"Connecté en tant que {name} ({role})")
-    
-    # Logout button
-    st.session_state["authenticator"].logout("Logout", "sidebar", key="logout_sidebar")
-
-elif auth_status is False:
-    st.error("❌ Nom d'utilisateur ou mot de passe incorrect")
+# AUTHENTICATION
+# ------------------------
+if "user" not in st.session_state:
+    st.title("Connexion")
+    email = st.text_input("Email")
+    password = st.text_input("Mot de passe", type="password")
+    if st.button("Se connecter"):
+        try:
+            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            st.session_state.user = res.user
+            st.experimental_rerun()
+        except Exception:
+            st.error("❌ Email ou mot de passe incorrect")
     st.stop()
 
-else:
-    st.warning("Veuillez entrer vos identifiants")
+user = st.session_state.user
+profile = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute().data
+
+if not profile["active"]:
+    st.error("⛔ Compte désactivé")
     st.stop()
 
-# ------------------------
-# PAGE SELECTION (persistent)
-# ------------------------
+username = profile["username"]
+name = profile["name"]
+role = profile["role"]
 
-# Initialize page in session_state if missing
+st.sidebar.success(f"{name} ({role})")
+if st.sidebar.button("Logout"):
+    supabase.auth.sign_out()
+    st.session_state.clear()
+    st.experimental_rerun()
+
+# ------------------------
+# PAGE SELECTION
+# ------------------------
 if "page" not in st.session_state:
     st.session_state.page = "Dashboard"
 
-# Define available pages
 page_options = ["Dashboard"]
 if role in ["admin", "super_admin"]:
-    page_options = ["Dashboard", "User Management", "Statistics", "Objectifs"]
+    page_options += ["User Management", "Statistics", "Objectifs"]
 
-# Sidebar selectbox for page selection, persists using session_state
 st.session_state.page = st.sidebar.selectbox(
     "Menu",
     page_options,
     index=page_options.index(st.session_state.page)
 )
-
 page = st.session_state.page
 
+# ------------------------
+# OBJECTIFS PAGE
+# ------------------------
 if page == "Objectifs":
     from objectifs import run_objectifs
     run_objectifs()
 
-
 # ------------------------
-# USER MANAGEMENT (ADMIN)
+# USER MANAGEMENT
 # ------------------------
-
 if page == "User Management":
     st.subheader("👥 Gestion des utilisateurs")
-    # Charger tous les utilisateurs (actifs et inactifs)
     if SUPABASE_ONLINE:
         users_db = supabase.table("users").select("*").execute().data
     else:
         users_db = []
         st.warning("⚠️ Supabase indisponible (mode dégradé)")
+
     if not users_db:
         st.info("Aucun utilisateur disponible.")
     else:
-        # Convertir en DataFrame et supprimer les colonnes sensibles
         users_visible = [u for u in users_db if u.get("role") != "super_admin"]
         df_users = pd.DataFrame(users_visible)
-        for col in ["id", "password_hash"]:
-            if col in df_users.columns:
-                df_users.drop(columns=col, inplace=True)
-        
+        if "id" in df_users.columns:
+            df_users.drop(columns="id", inplace=True)
         st.dataframe(df_users, use_container_width=True)
-    # ------------------------
-    # AJOUT / RÉACTIVATION UTILISATEUR
-    # ------------------------
+
+    # Ajouter / Réactiver utilisateur
     st.markdown("### ➕ Ajouter ou réactiver un utilisateur")
     with st.form("add_user_form"):
         new_username = st.text_input("Nom d'utilisateur")
         new_name = st.text_input("Nom complet")
-        new_password = st.text_input("Mot de passe", type="password")
+        new_email = st.text_input("Email professionnel")
         if role == "super_admin":
             new_role = st.selectbox("Rôle", ["user", "admin", "super_admin"])
         else:
             new_role = st.selectbox("Rôle", ["user", "admin"])
-
         add_user = st.form_submit_button("Ajouter / Réactiver")
-        if add_user:
-            if not new_username or not new_password:
-                st.warning("Nom d'utilisateur et mot de passe requis")
-            else:
-                # Vérifier si l'utilisateur existe déjà
-                exists = next((u for u in users_db if u["username"] == new_username), None)
-                if exists:
-                    if exists["active"]:
-                        st.warning("⚠️ Utilisateur déjà existant et actif")
-                    else:
-                        # Réactivation d'un utilisateur désactivé
-                        temp_credentials = {
-                            "usernames": {
-                                new_username: {
-                                    "name": new_name,
-                                    "password": new_password,
-                                    "role": new_role
-                                }
-                            }
-                        }
-                        hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][new_username]["password"]
 
-                        supabase.table("users").update({
-                            "active": True,
-                            "name": new_name,
-                            "role": new_role,
-                            "password_hash": hashed_password
-                        }).eq("username", new_username).execute()
-
-                        # Mettre à jour credentials localement
-                        credentials["usernames"][new_username] = {
-                            "name": new_name,
-                            "password": new_password,
-                            "role": new_role
-                        }
-                        hasher = stauth.Hasher()
-                        credentials = hasher.hash_passwords(credentials)
-                        st.session_state["authenticator"].credentials = credentials
-                        st.success(f"Utilisateur {new_username} réactivé et mot de passe mis à jour !")
+    if add_user:
+        if not new_username or not new_email:
+            st.warning("Nom d'utilisateur et email requis")
+        else:
+            exists = next((u for u in users_db if u["username"] == new_username), None)
+            if exists:
+                if exists["active"]:
+                    st.warning("⚠️ Utilisateur déjà actif")
                 else:
-                    # Nouvel utilisateur → hash et insert
-                    temp_credentials = {
-                        "usernames": {
-                            new_username: {
-                                "name": new_name,
-                                "password": new_password,
-                                "role": new_role
-                            }
-                        }
-                    }
-                    hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][new_username]["password"]
+                    supabase.table("users").update({
+                        "active": True,
+                        "name": new_name,
+                        "role": new_role
+                    }).eq("username", new_username).execute()
+                    st.success(f"Utilisateur {new_username} réactivé !")
+            else:
+                try:
+                    auth_user = supabase.auth.admin.create_user({"email": new_email, "email_confirm": False})
                     supabase.table("users").insert({
+                        "auth_user_id": auth_user.user.id,
+                        "email": new_email,
                         "username": new_username,
                         "name": new_name,
                         "role": new_role,
-                        "password_hash": hashed_password,
                         "active": True
                     }).execute()
+                    st.success(f"Utilisateur {new_username} ajouté et invité !")
+                except Exception as e:
+                    st.error("❌ Impossible de créer l'utilisateur")
+                    st.exception(e)
 
-                    # Mettre à jour credentials localement
-                    credentials["usernames"][new_username] = {
-                        "name": new_name,
-                        "password": new_password,
-                        "role": new_role
-                    }
-                    hasher = stauth.Hasher()
-                    credentials = hasher.hash_passwords(credentials)
-                    st.session_state["authenticator"].credentials = credentials
-                    st.success(f"Utilisateur {new_username} ajouté !")
-
-    # ------------------------
-    # DÉSACTIVER UN UTILISATEUR
-    # ------------------------
+    # Désactiver utilisateur
     st.markdown("### ❌ Désactiver un utilisateur")
-    active_usernames = [
-    u["username"]
-    for u in users_db
-    if u["active"] and u.get("role") != "super_admin"
-    ]
+    active_usernames = [u["username"] for u in users_db if u["active"] and u.get("role") != "super_admin"]
     if active_usernames:
         del_username = st.selectbox("Sélectionner utilisateur à désactiver", active_usernames)
         if st.button("Désactiver"):
@@ -305,88 +190,38 @@ if page == "User Management":
                 if role_to_delete == "admin":
                     st.error("❌ Impossible de désactiver un administrateur")
                 else:
-                    # Désactivation (update active = False)
                     supabase.table("users").update({"active": False}).eq("username", del_username).execute()
                     st.success(f"Utilisateur {del_username} désactivé")
 
-    # ------------------------
-    # RÉINITIALISER MOT DE PASSE
-    # ------------------------
-    st.markdown("### 🔑 Réinitialiser le mot de passe d'un utilisateur")
+    # Reset password email
+    st.markdown("### 🔑 Réinitialiser le mot de passe")
+    reset_email = st.text_input("Email utilisateur")
+    if st.button("Envoyer email de réinitialisation"):
+        supabase.auth.reset_password_email(reset_email)
+        st.success("📧 Email de réinitialisation envoyé")
 
-    resettable_users = [
-    u["username"]
-    for u in users_db
-    if u["active"] and u.get("role") != "super_admin"]
-    reset_username = st.selectbox(
-    "Sélectionner utilisateur", 
-    resettable_users, 
-    key="reset_user"
-    )
-    # 🛡️ GARDE-FOU (Option PRO)
-    target_role = next(
-        (u["role"] for u in users_db if u["username"] == reset_username),
-        None
-        )
-
-    if target_role == "super_admin":
-        st.error("⛔ Action interdite sur un super administrateur")
-        st.stop()
-        
-    new_password_reset = st.text_input("Nouveau mot de passe", type="password", key="reset_password")
-    reset_btn = st.button("Réinitialiser le mot de passe")
-    if reset_btn:
-        if not new_password_reset:
-            st.warning("Veuillez saisir un nouveau mot de passe")
-        else:
-            # Hash du nouveau mot de passe
-            temp_credentials = {
-                "usernames": {
-                    reset_username: {"password": new_password_reset}
-                }
-            }
-            hashed_password = stauth.Hasher().hash_passwords(temp_credentials)["usernames"][reset_username]["password"]
-            # Mettre à jour dans Supabase
-            supabase.table("users").update({
-                "password_hash": hashed_password
-            }).eq("username", reset_username).execute()
-            # Mettre à jour dans credentials local
-            if reset_username in credentials["usernames"]:
-                credentials["usernames"][reset_username]["password"] = new_password_reset
-                hasher = stauth.Hasher()
-                credentials = hasher.hash_passwords(credentials)
-                st.session_state["authenticator"].credentials = credentials
-            st.success(f"Mot de passe de {reset_username} réinitialisé !")
-    # ACTIVITY LOGS
-    # ------------------------
+    # Journaux d'activité
     st.markdown("### 📝 Journaux d'activité")
     if SUPABASE_ONLINE:
-        logs = (
-            supabase
-            .table("activity_logs")
-            .select("*")
-            .order("timestamp", desc=True)
-            .execute()
-        )
+        logs = supabase.table("activity_logs").select("*").order("timestamp", desc=True).execute()
         df_logs = pd.DataFrame(logs.data)
     else:
-        st.info("📝 Journaux indisponibles hors ligne")
         df_logs = pd.DataFrame()
+        st.info("📝 Journaux indisponibles hors ligne")
 
     if df_logs.empty:
-        st.info("Aucun journal d'activité disponible")
+        st.info("Aucun journal disponible")
     st.dataframe(df_logs, use_container_width=True)
 
-
+# ------------------------
+# STATISTICS PAGE
+# ------------------------
 if page == "Statistics":
     st.subheader("📊 Statistiques Cliniques")
-
-    # ------------------------
-    # Fetch data
-    # ------------------------
     if not SUPABASE_ONLINE:
         st.warning("📊 Statistiques indisponibles hors ligne")
         st.stop()
+
     records = supabase.table("indicateurs_cliniques").select("*").execute()
     df = pd.DataFrame(records.data)
 
@@ -394,79 +229,50 @@ if page == "Statistics":
         st.info("Aucune donnée clinique disponible pour le moment.")
         st.stop()
 
-    # ------------------------
-    # Convert date column to datetime
-    # ------------------------
     df["registration_time"] = pd.to_datetime(df["registration_time"])
 
-    # ------------------------
-    # Interactive filters
-    # ------------------------
+    # Filters
     st.markdown("### Filtrer les données")
     col1, col2, col3 = st.columns(3)
-
     with col1:
         date_min = df["registration_time"].min().date()
         date_max = df["registration_time"].max().date()
         date_range = st.date_input("Période", [date_min, date_max])
-
     with col2:
         patients = ["Tous"] + df["patient_first_name"].dropna().unique().tolist()
         selected_patient = st.selectbox("Patient", patients)
-
     with col3:
         metrics_options = ["Tous", "Incidents", "Erreurs", "Réadmissions"]
         selected_metric = st.selectbox("Métrique", metrics_options)
 
-    # ------------------------
-    # Apply filters
-    # ------------------------
     start_date, end_date = date_range
     mask = (df["registration_time"].dt.date >= start_date) & (df["registration_time"].dt.date <= end_date)
-
     if selected_patient != "Tous":
         mask &= df["patient_first_name"] == selected_patient
-
     df_filtered = df[mask]
 
     if df_filtered.empty:
         st.warning("Aucune donnée pour ce filtre.")
         st.stop()
 
-    # ------------------------
-    # Overview metrics
-    # ------------------------
+    # Metrics overview
     st.markdown("### ✅ Vue d'ensemble")
     col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric("Nombre de patients", len(df_filtered))
-    with col2:
-        st.metric("Incidents signalés", df_filtered["incident"].sum())
-    with col3:
-        st.metric("Erreurs médicales", df_filtered["erreur_medicale"].sum())
-    with col4:
-        st.metric("Réadmissions", df_filtered["readmission"].sum())
+    with col1: st.metric("Nombre de patients", len(df_filtered))
+    with col2: st.metric("Incidents signalés", df_filtered["incident"].sum())
+    with col3: st.metric("Erreurs médicales", df_filtered["erreur_medicale"].sum())
+    with col4: st.metric("Réadmissions", df_filtered["readmission"].sum())
 
     st.divider()
 
-    # ------------------------
-    # Pie chart: patient evolution
-    # ------------------------
+    # Pie chart: evolution
     st.markdown("### Évolution des patients")
     evolution_counts = df_filtered["evolution_patient"].value_counts().reset_index()
     evolution_counts.columns = ["Évolution", "Nombre"]
-    fig_evolution = px.pie(
-        evolution_counts,
-        names="Évolution",
-        values="Nombre",
-        title="Répartition par évolution des patients"
-    )
+    fig_evolution = px.pie(evolution_counts, names="Évolution", values="Nombre", title="Répartition par évolution des patients")
     st.plotly_chart(fig_evolution, use_container_width=True)
 
-    # ------------------------
     # Bar chart: incidents vs errors
-    # ------------------------
     st.markdown("### Incidents vs Erreurs médicales")
     incidents_df = df_filtered.groupby(["incident", "erreur_medicale"]).size().reset_index(name="Nombre")
     fig_incidents = px.bar(
@@ -479,38 +285,19 @@ if page == "Statistics":
     )
     st.plotly_chart(fig_incidents, use_container_width=True)
 
-    # ------------------------
     # Histogram: duration of stay
-    # ------------------------
     st.markdown("### Durée de séjour")
-    fig_sejour = px.histogram(
-        df_filtered,
-        x="duree_sejour",
-        nbins=20,
-        title="Distribution des durées de séjour (jours)",
-        labels={"duree_sejour": "Durée (jours)"}
-    )
+    fig_sejour = px.histogram(df_filtered, x="duree_sejour", nbins=20, title="Distribution des durées de séjour (jours)", labels={"duree_sejour": "Durée (jours)"})
     st.plotly_chart(fig_sejour, use_container_width=True)
 
-    # ------------------------
     # Histogram: satisfaction patient
-    # ------------------------
     st.markdown("### Satisfaction des patients")
-    fig_satisfaction = px.histogram(
-        df_filtered,
-        x="satisfaction_patient",
-        nbins=5,
-        title="Distribution de la satisfaction patient",
-        labels={"satisfaction_patient": "Satisfaction"}
-    )
+    fig_satisfaction = px.histogram(df_filtered, x="satisfaction_patient", nbins=5, title="Distribution de la satisfaction patient", labels={"satisfaction_patient": "Satisfaction"})
     st.plotly_chart(fig_satisfaction, use_container_width=True)
 
-    # ------------------------
-    # Raw data table
-    # ------------------------
+    # Raw data
     st.markdown("### Données brutes")
-    st.dataframe(df_filtered, use_container_width=True)
-# ------------------------
+    st.dataframe(df_filtered, use_container_width=True)# ------------------------
 # DASHBOARD
 # ------------------------
 if page == "Dashboard":
