@@ -74,8 +74,22 @@ if "user" not in st.session_state:
     st.stop()
 
 user = st.session_state.user
-profile = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute().data
-
+try:
+    res = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute()
+    profile = res.data
+    if not profile:
+        st.error(
+            "❌ Aucun profil trouvé pour cet utilisateur.\n"
+            "Veuillez créer une entrée dans la table 'users' avec ce 'auth_user_id'."
+        )
+        st.stop()
+except Exception as e:
+    st.error(
+        "❌ Impossible de récupérer le profil utilisateur.\n"
+        "Vérifiez que la table 'users' contient bien un enregistrement pour ce 'auth_user_id'."
+    )
+    st.exception(e)
+    st.stop()
 if not profile["active"]:
     st.error("⛔ Compte désactivé")
     st.stop()
