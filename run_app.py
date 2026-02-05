@@ -182,7 +182,7 @@ if page == "User Management":
                 try:
                     auth_user = supabase_admin.auth.admin.create_user({
                                 "email": new_email,
-                                "email_confirm": False
+                                "email_confirm": True
                             })                    
                     supabase.table("users").insert({
                         "auth_user_id": auth_user.user.id,
