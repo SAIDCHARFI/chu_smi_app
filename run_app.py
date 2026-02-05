@@ -100,8 +100,8 @@ role = profile["role"]
 
 st.sidebar.success(f"{name} ({role})")
 if st.sidebar.button("Logout"):
-    supabase.auth.sign_out()
-    st.session_state.clear()
+    if "user" in st.session_state:
+        del st.session_state["user"]
     st.experimental_rerun()
 
 # ------------------------
