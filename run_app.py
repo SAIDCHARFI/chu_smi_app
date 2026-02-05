@@ -55,7 +55,7 @@ def save_locally(record):
 # CHECK CONNECTION
 # ------------------------
 try:
-    supabase.table("users").select("id").limit(1).execute()
+    supabase.auth.get_user()
 except Exception:
     SUPABASE_ONLINE = False
     st.warning("⚠️ Mode hors ligne — certaines fonctionnalités sont désactivées")
@@ -86,6 +86,13 @@ if "session" in st.session_state:
 try:
     res = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute()
     profile = res.data
+    if not profile:
+        st.error(
+            "❌ Aucun profil trouvé pour cet utilisateur.\n"
+            "Veuillez créer une entrée dans la table 'users' avec ce 'auth_user_id'."
+        )
+        st.stop()
+
     if profile.get("is_temp_pass", False):
         st.warning("⚠️ Vous utilisez un mot de passe temporaire. Vous devez le changer maintenant pour sécuriser votre compte !")
 
@@ -113,13 +120,7 @@ try:
 
         # On stoppe l'exécution pour bloquer l'accès aux autres pages
         st.stop()
-    if not profile:
-        st.error(
-            "❌ Aucun profil trouvé pour cet utilisateur.\n"
-            "Veuillez créer une entrée dans la table 'users' avec ce 'auth_user_id'."
-        )
-        st.stop()
-except Exception as e:
+    except Exception as e:
     st.error(
         "❌ Impossible de récupérer le profil utilisateur.\n"
         "Vérifiez que la table 'users' contient bien un enregistrement pour ce 'auth_user_id'."
@@ -136,8 +137,8 @@ role = profile["role"]
 
 st.sidebar.success(f"{name} ({role})")
 if st.sidebar.button("Logout"):
-    if "user" in st.session_state:
-        del st.session_state["user"]
+    supabase.auth.sign_out()
+    st.session_state.clear()
     st.rerun()
 
 # ------------------------
@@ -253,7 +254,7 @@ if page == "User Management":
     st.markdown("### 🔑 Réinitialiser le mot de passe")
     reset_email = st.text_input("Email utilisateur")
     if st.button("Envoyer email de réinitialisation"):
-        supabase.auth.reset_password_email(reset_email)
+        supabase.auth.reset_password_for_email(reset_email,{"redirect_to": "https://chusmiapp-tu7anov8scbpmqjq4wyqrh.streamlit.app"})
         st.success("📧 Email de réinitialisation envoyé")
 
     # Journaux d'activité
@@ -294,6 +295,10 @@ if page == "Statistics":
         date_min = df["registration_time"].min().date()
         date_max = df["registration_time"].max().date()
         date_range = st.date_input("Période", [date_min, date_max])
+        start_date, end_date = date_range
+        if len(date_range) != 2:
+            st.warning("Veuillez sélectionner une période complète")
+            st.stop()
     with col2:
         patients = ["Tous"] + df["patient_first_name"].dropna().unique().tolist()
         selected_patient = st.selectbox("Patient", patients)
