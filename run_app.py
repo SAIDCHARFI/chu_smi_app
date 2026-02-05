@@ -71,12 +71,18 @@ if "user" not in st.session_state:
         try:
             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
             st.session_state.user = res.user
+            st.session_state.session = res.session  
             st.experimental_rerun()
         except Exception:
             st.error("❌ Email ou mot de passe incorrect")
     st.stop()
 
 user = st.session_state.user
+if "session" in st.session_state:
+    supabase.auth.set_session(
+        st.session_state.session.access_token,
+        st.session_state.session.refresh_token
+    )
 try:
     res = supabase.table("users").select("*").eq("auth_user_id", user.id).single().execute()
     profile = res.data
