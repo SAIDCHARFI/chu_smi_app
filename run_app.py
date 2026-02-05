@@ -177,12 +177,12 @@ if page == "User Management":
                     st.success(f"Utilisateur {new_username} réactivé !")
             else:
                 try:
-                        auth_user = supabase.auth.admin.create_user({
+                    auth_user = supabase.auth.admin.create_user({
                                 "email": new_email,
                                 "password": "MotDePasseTemp123!",  # obligatoire pour se connecter
                                 "email_confirm": True
                             })                    
-                        supabase.table("users").insert({
+                    supabase.table("users").insert({
                         "auth_user_id": auth_user.user.id,
                         "email": new_email,
                         "username": new_username,
