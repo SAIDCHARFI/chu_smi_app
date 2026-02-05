@@ -221,7 +221,7 @@ if page == "User Management":
                         "active": True,
                         "is_temp_pass": True
                     }).execute()
-                    supabase.auth.send_reset_password_email(new_email)  
+                    supabase.auth.reset_password_for_email(new_email,{"redirect_to": "https://chusmiapp-tu7anov8scbpmqjq4wyqrh.streamlit.app"}) 
                     st.success(f"Utilisateur {new_username} créé et un email avec mot de passe temporaire a été envoyé")
                 except Exception as e:
                     st.error("❌ Impossible de créer l'utilisateur")
