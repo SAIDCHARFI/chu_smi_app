@@ -120,7 +120,7 @@ try:
 
         # On stoppe l'exécution pour bloquer l'accès aux autres pages
         st.stop()
-    except Exception as e:
+except Exception as e:
     st.error(
         "❌ Impossible de récupérer le profil utilisateur.\n"
         "Vérifiez que la table 'users' contient bien un enregistrement pour ce 'auth_user_id'."
@@ -783,7 +783,6 @@ if page == "Dashboard":
                         supabase.table("indicateurs_cliniques").insert(r).execute()
                     os.remove(LOCAL_FILE)
                     st.info("📤 Données locales synchronisées automatiquement")
-
         except Exception as e:
                 st.warning("⚠️ Connexion perdue, données stockées localement")
                 save_locally(record)
